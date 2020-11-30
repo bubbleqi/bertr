@@ -36,9 +36,6 @@ from torch_ner.source.config import Config
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
 config = Config()
 
 
@@ -49,7 +46,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     n_gpu = torch.cuda.device_count()
     args.device = device
-    logger.info(f"device: {device}，n_gpu: {n_gpu}")
+    logging.info(f"device: {device}，n_gpu: {n_gpu}")
 
     # 如果显存不足，我们可以通过gradient_accumulation_steps梯度累计来解决
     if config.gradient_accumulation_steps < 1:
@@ -58,7 +55,7 @@ def main():
 
     # 清理output目录，若output目录存在，将会被删除
     if config.clean and config.do_train:
-        logger.info(f"clear output dir: {config.output_path} ...")
+        logging.info(f"clear output dir: {config.output_path} ...")
         if os.path.exists(config.output_path):
             def del_file(path):
                 ls = os.listdir(path)
@@ -73,8 +70,8 @@ def main():
             try:
                 del_file(config.output_path)
             except Exception as e:
-                logger.error(e)
-                logger.error('pleace remove the files of output dir and data.conf')
+                logging.error(e)
+                logging.error('pleace remove the files of output dir and data.conf')
                 exit(-1)
 
     if os.path.exists(config.output_path) and os.listdir(config.output_path) and config.do_train:
@@ -92,21 +89,22 @@ def main():
     label_list = processor.get_labels(config=config)
     label_list_str = ",".join(list(label_list))
     num_labels = len(label_list)
-    logger.info(f"labels size is {num_labels}, labels: {label_list_str}")
+    logging.info(f"labels size is {num_labels}, labels: {label_list_str}")
     args.label_list = label_list
 
-    label2id, id2label = processor.get_label2id_id2label(config=config, label_list=label_list)
+    label2id, id2label = processor.get_label2id_id2label(config.output_path, label_list=label_list)
+
     if config.do_train:
         tokenizer = BertTokenizer.from_pretrained(
-            config.model_name_or_path,
-            do_lower_case=config.do_lower_case)
+            config.model_name_or_path, do_lower_case=config.do_lower_case)
 
         bert_config = BertConfig.from_pretrained(
-            config.model_name_or_path,
-            num_labels=num_labels)
+            config.model_name_or_path, num_labels=num_labels)
 
-        model = BERT_BiLSTM_CRF.from_pretrained(config.model_name_or_path, config=bert_config,
-                                                need_birnn=config.need_birnn, rnn_dim=config.rnn_dim)
+        model = BERT_BiLSTM_CRF.from_pretrained(
+            config.model_name_or_path, config=bert_config,
+            need_birnn=config.need_birnn, rnn_dim=config.rnn_dim)
+
         model.to(device)
 
 

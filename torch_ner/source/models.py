@@ -26,21 +26,15 @@ class BERT_BiLSTM_CRF(BertPreTrainedModel):
     def forward(self, input_ids, tags, token_type_ids=None, input_mask=None):
         emissions = self.tag_outputs(input_ids, token_type_ids, input_mask)
         loss = -1 * self.crf(emissions, tags, mask=input_mask.byte())
-
         return loss
 
     def tag_outputs(self, input_ids, token_type_ids=None, input_mask=None):
-
         outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
-
         sequence_output = outputs[0]
-
         if self.need_birnn:
             sequence_output, _ = self.birnn(sequence_output)
-
         sequence_output = self.dropout(sequence_output)
         emissions = self.hidden2tag(sequence_output)
-
         return emissions
 
     def predict(self, input_ids, token_type_ids=None, input_mask=None):
