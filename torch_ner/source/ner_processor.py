@@ -36,9 +36,10 @@ class NerProcessor(object):
                     tokens = line.strip().split("\t")
                     if len(tokens) == 2:
                         labels.add(tokens[1])
+
             if len(labels) == 0:
-                logging.info("loading error and return the default labels B,I,O")
-                labels = {"O", "B", "I"}
+                ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
+
             with open(os.path.join(config.output_path, "label_list.pkl"), "wb") as f:
                 pickle.dump(labels, f)
         return labels

@@ -6,7 +6,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import argparse
 import csv
 import logging
 import os
@@ -39,21 +38,12 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 config = Config()
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    args = parser.parse_args()
-    # 配置可用设备
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    n_gpu = torch.cuda.device_count()
-    args.device = device
-    logging.info(f"available device: {device}，count_gpu: {n_gpu}")
-
-    # 如果显存不足，我们可以通过gradient_accumulation_steps梯度累计来解决
-    if config.gradient_accumulation_steps < 1:
-        raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
-            config.gradient_accumulation_steps))
-
-    # 清理output目录，若output目录存在，将会被删除
+def clean_output(config: Config):
+    """
+    清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
+    :param config:
+    :return:
+    """
     if config.clean and config.do_train:
         logging.info(f"clear output dir: {config.output_path}")
         if os.path.exists(config.output_path):
@@ -84,20 +74,34 @@ def main():
     if not os.path.exists(os.path.join(config.output_path, "eval")):
         os.makedirs(os.path.join(config.output_path, "eval"))
 
+
+def train():
+    # 配置可用设备
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    n_gpu = torch.cuda.device_count()
+    logging.info(f"available device: {device}，count_gpu: {n_gpu}")
+
+    # 如果显存不足，我们可以通过gradient_accumulation_steps梯度累计来解决
+    if config.gradient_accumulation_steps < 1:
+        raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
+            config.gradient_accumulation_steps))
+
+    # 清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
+    clean_output(config)
+
     writer = SummaryWriter(logdir=os.path.join(config.output_path, "eval"), comment="Linear")
 
-    # ============数据预处理============
+    # ===============数据预处理================
     logging.info("now starting data pre-processing...")
     processor = NerProcessor()
     # 读取训练数据获取标签
     label_list = processor.get_labels(config=config)
     num_labels = len(label_list)
-    args.label_list = label_list
     logging.info(f"labels size is {num_labels}, labels: {','.join(list(label_list))}")
 
     # 获取label2id、id2label的映射
     label2id, id2label = processor.get_label2id_id2label(config.output_path, label_list=label_list)
-    logging.info("get label2id/id2label dictionary successful")
+    logging.info("initialize label2id/id2label dictionary successful")
 
     # 初始化tokenizer(分词器)、bert_config、model
     if config.do_train:
@@ -105,9 +109,9 @@ def main():
         bert_config = BertConfig.from_pretrained(config.model_name_or_path, num_labels=num_labels)
         model = BERT_BiLSTM_CRF.from_pretrained(config.model_name_or_path, config=bert_config,
                                                 need_birnn=config.need_birnn, rnn_dim=config.rnn_dim)
-        logging.info("initialize tokenizer、bert_config and model successful")
+        logging.info("building tokenizer、bert_config and bert_bilstm_crf model successful")
         model.to(device)
 
 
 if __name__ == '__main__':
-    main()
+    train()
