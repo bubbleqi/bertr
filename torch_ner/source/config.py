@@ -44,6 +44,7 @@ class Config(object):
         self.model_name_or_path = os.path.join(self.base_path, 'bert-base-chinese')
         # Where do you want to store the pre-trained models downloaded from s3
         self.cache_dir = os.path.join(self.base_path, 'bert-base-chinese')
+        self.label_list = []
 
         # 以下是模型训练参数
         self.do_train = True

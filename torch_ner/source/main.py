@@ -92,10 +92,12 @@ def train():
     writer = SummaryWriter(logdir=os.path.join(config.output_path, "eval"), comment="Linear")
 
     # ===============数据预处理================
-    logging.info("now starting data pre-processing...")
     processor = NerProcessor()
+    logging.info("now starting data pre-processing...")
+
     # 读取训练数据获取标签
     label_list = processor.get_labels(config=config)
+    config.label_list = label_list
     num_labels = len(label_list)
     logging.info(f"labels size is {num_labels}, labels: {','.join(list(label_list))}")
 
@@ -103,14 +105,20 @@ def train():
     label2id, id2label = processor.get_label2id_id2label(config.output_path, label_list=label_list)
     logging.info("initialize label2id/id2label dictionary successful")
 
-    # 初始化tokenizer(分词器)、bert_config、model
     if config.do_train:
+        # 初始化tokenizer(分词器)、bert_config、bert_bilstm_crf model
         tokenizer = BertTokenizer.from_pretrained(config.model_name_or_path, do_lower_case=config.do_lower_case)
         bert_config = BertConfig.from_pretrained(config.model_name_or_path, num_labels=num_labels)
         model = BERT_BiLSTM_CRF.from_pretrained(config.model_name_or_path, config=bert_config,
                                                 need_birnn=config.need_birnn, rnn_dim=config.rnn_dim)
         logging.info("building tokenizer、bert_config and bert_bilstm_crf model successful")
         model.to(device)
+
+        if n_gpu > 1:
+            model = torch.nn.DataParallel(model)
+
+        # 获取训练样本、样本特征、TensorDataset信息
+        train_examples, train_features, train_data = processor.get_dataset(config, tokenizer, mode="train")
 
 
 if __name__ == '__main__':
