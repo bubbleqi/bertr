@@ -119,6 +119,10 @@ def train():
 
         # 获取训练样本、样本特征、TensorDataset信息
         train_examples, train_features, train_data = processor.get_dataset(config, tokenizer, mode="train")
+        # 初始化RandomSampler采样器
+        train_sampler = RandomSampler(train_data)
+        # 数据加载器，结合了数据集和取样器，并且可以提供多个线程处理数据集
+        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.train_batch_size)
 
 
 if __name__ == '__main__':
