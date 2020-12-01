@@ -117,12 +117,40 @@ def train():
         if n_gpu > 1:
             model = torch.nn.DataParallel(model)
 
+        logging.info("loading train data and dataloader...")
         # 获取训练样本、样本特征、TensorDataset信息
         train_examples, train_features, train_data = processor.get_dataset(config, tokenizer, mode="train")
         # 初始化RandomSampler采样器
         train_sampler = RandomSampler(train_data)
         # 数据加载器，结合了数据集和取样器，并且可以提供多个线程处理数据集
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.train_batch_size)
+
+        if config.do_eval:
+            eval_examples, eval_features, eval_data = processor.get_dataset(config, tokenizer, mode="train")
+
+        logging.info("loading AdamW optimizer、WarmupLinearSchedule and calculate optimizer parameter...")
+        # 计算优化器更新次数、训练轮次
+        if config.max_steps > 0:
+            t_total = config.max_steps
+            config.num_train_epochs = config.max_steps // (
+                    len(train_dataloader) // config.gradient_accumulation_steps) + 1
+        else:
+            t_total = len(train_dataloader) // config.gradient_accumulation_steps * config.num_train_epochs
+
+        # 初始化模型优化器
+        no_decay = ['bias', 'LayerNorm.weight']
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+             'weight_decay': 0.01},
+            {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
+        optimizer = AdamW(optimizer_grouped_parameters, lr=config.learning_rate, eps=config.adam_epsilon)
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=config.warmup_steps, t_total=t_total)
+
+        logging.info("*********** Running training ***********")
+        logging.info("Num examples = %d", len(train_data))
+        logging.info("Num Epochs = %d", config.num_train_epochs)
+        logging.info("Total optimization steps = %d", t_total)
 
 
 if __name__ == '__main__':
