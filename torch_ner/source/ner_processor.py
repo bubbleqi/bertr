@@ -248,3 +248,40 @@ class NerProcessor(object):
                         words = []
                         labels = []
             return lines
+
+    @staticmethod
+    def clean_output(config: Config):
+        """
+        清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
+        :param config:
+        :return:
+        """
+        if config.clean and config.do_train:
+            logging.info(f"clear output dir: {config.output_path}")
+            if os.path.exists(config.output_path):
+                def del_file(path):
+                    ls = os.listdir(path)
+                    for i in ls:
+                        c_path = os.path.join(path, i)
+                        if os.path.isdir(c_path):
+                            del_file(c_path)
+                            os.rmdir(c_path)
+                        else:
+                            os.remove(c_path)
+
+                try:
+                    del_file(config.output_path)
+                except Exception as e:
+                    logging.error(e)
+                    logging.error('pleace remove the files of output dir and data.conf')
+                    exit(-1)
+
+        # 初始化output目录
+        if os.path.exists(config.output_path) and os.listdir(config.output_path) and config.do_train:
+            raise ValueError("Output directory ({}) already exists and is not empty.".format(config.output_path))
+
+        if not os.path.exists(config.output_path):
+            os.makedirs(config.output_path)
+
+        if not os.path.exists(os.path.join(config.output_path, "eval")):
+            os.makedirs(os.path.join(config.output_path, "eval"))
