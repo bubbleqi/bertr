@@ -147,10 +147,41 @@ def train():
         optimizer = AdamW(optimizer_grouped_parameters, lr=config.learning_rate, eps=config.adam_epsilon)
         scheduler = WarmupLinearSchedule(optimizer, warmup_steps=config.warmup_steps, t_total=t_total)
 
-        logging.info("*********** Running training ***********")
+        logging.info("************** Running training ****************")
         logging.info("Num examples = %d", len(train_data))
         logging.info("Num Epochs = %d", config.num_train_epochs)
         logging.info("Total optimization steps = %d", t_total)
+
+        # 启用 BatchNormalization 和 Dropout
+        model.train()
+        global_step, tr_loss, logging_loss, best_f1 = 0, 0.0, 0.0, 0.0
+        for ep in trange(int(config.num_train_epochs), desc="Epoch"):
+            model.train()
+            for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+                batch = tuple(t.to(device) for t in batch)
+                input_ids, input_mask, segment_ids, label_ids = batch
+                outputs = model(input_ids, label_ids, segment_ids, input_mask)
+                loss = outputs
+
+                if n_gpu > 1:
+                    loss = loss.mean()  # mean() to average on multi-gpu.
+
+                if config.gradient_accumulation_steps > 1:
+                    loss = loss / config.gradient_accumulation_steps
+
+                loss.backward()
+                tr_loss += loss.item()
+
+                if (step + 1) % config.gradient_accumulation_steps == 0:
+                    optimizer.step()
+                    scheduler.step()  # Update learning rate schedule
+                    model.zero_grad()
+                    global_step += 1
+
+                    if config.logging_steps > 0 and global_step % config.logging_steps == 0:
+                        tr_loss_avg = (tr_loss - logging_loss) / config.logging_steps
+                        writer.add_scalar("Train/loss", tr_loss_avg, global_step)
+                        logging_loss = tr_loss
 
 
 if __name__ == '__main__':
