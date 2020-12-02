@@ -69,5 +69,5 @@ class Config(object):
         self.do_lower_case = True
         self.logging_steps = 500
         self.clean = True
-        self.need_birnn = True
+        self.need_birnn = False
         self.rnn_dim = 128
