@@ -59,10 +59,10 @@ class NerMain(object):
             raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
                 self.config.gradient_accumulation_steps))
 
-        writer = SummaryWriter(logdir=os.path.join(self.config.output_path, "eval"), comment="Linear")
-
         # 清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
         self.processor.clean_output(self.config)
+
+        writer = SummaryWriter(logdir=os.path.join(self.config.output_path, "eval"), comment="Linear")
 
         logging.info("now starting data pre-processing...")
         # 读取训练数据获取标签
@@ -236,6 +236,74 @@ class NerMain(object):
                             f.write(f"{ot} {ol} {pl}\n")
                     f.write("\n")
 
+    def predict(self):
+        input_text = "张三的爸爸是谁?"
+        max_seq_length = 128
+        tokenizer = BertTokenizer.from_pretrained(self.config.output_path)
+        textlist = list(input_text)
+        print(textlist)
+        tokens = []
+        for word in textlist:
+            tokens.extend(tokenizer.tokenize(word))
+
+        print(tokens)
+
+        if len(tokens) >= max_seq_length - 1:
+            tokens = tokens[0:(max_seq_length - 2)]  # -2 的原因是因为序列需要加一个句首和句尾标志
+
+        ntokens = ["[CLS]"] + tokens + ["[SEP]"]
+
+        input_ids = tokenizer.convert_tokens_to_ids(ntokens)
+        segment_ids = [0] * len(input_ids)
+        input_mask = [1] * len(input_ids)
+
+        while len(input_ids) < max_seq_length:
+            input_ids.append(0)
+            segment_ids.append(0)
+            input_mask.append(0)
+
+        assert len(input_ids) == max_seq_length
+        assert len(segment_ids) == max_seq_length
+        assert len(input_mask) == max_seq_length
+
+        input_ids = torch.tensor(input_ids, dtype=torch.long)
+        segment_ids = torch.tensor(segment_ids, dtype=torch.long)
+        input_mask = torch.tensor(input_mask, dtype=torch.long)
+
+        input_ids = input_ids.to("cpu")
+        segment_ids = segment_ids.to("cpu")
+        input_mask = input_mask.to("cpu")
+
+        print(input_ids.shape, segment_ids.shape, input_mask.shape)
+
+        input_ids = input_ids.unsqueeze(0)
+        segment_ids = segment_ids.unsqueeze(0)
+        input_mask = input_mask.unsqueeze(0)
+
+        print(input_ids.shape, segment_ids.shape, input_mask.shape)
+
+        model = torch.load(os.path.join(self.config.output_path, "ner_model.ckpt"))
+        model.eval()
+
+        print("=========================")
+        with torch.no_grad():
+            logits = model.predict(input_ids, segment_ids, input_mask)
+
+        print(logits)
+        with open(os.path.join(self.config.output_path, "label2id.pkl"), "rb") as f:
+            label2id = pickle.load(f)
+
+        id2label = {value: key for key, value in label2id.items()}
+
+        pred_labels = []
+        for l in logits:
+            pred_label = []
+            for idx in l:
+                pred_label.append(id2label[idx])
+            pred_labels.append(pred_label)
+
+        print(pred_labels)
+
     # set the random seed for repeat
     @staticmethod
     def set_seed(args):
@@ -290,3 +358,7 @@ class NerMain(object):
         # namedtuple('Metrics', 'tp fp fn prec rec fscore')
         overall, by_type = conlleval.metrics(counts)
         return overall, by_type
+
+
+if __name__ == '__main__':
+    NerMain().train()

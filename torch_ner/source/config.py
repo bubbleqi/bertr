@@ -37,8 +37,8 @@ class Config(object):
 
     def _init_train_config(self):
         self.train_file = os.path.join(self.base_path, 'data', 'train.txt')
-        self.eval_file = os.path.join(self.base_path, 'data', 'eval.txt')
-        self.test_file = os.path.join(self.base_path, 'data', 'test.txt')
+        self.eval_file = os.path.join(self.base_path, 'data', 'train.txt')
+        self.test_file = os.path.join(self.base_path, 'data', 'train.txt')
         self.output_path = os.path.join(self.base_path, 'output')
         # Pretrained model name or path if not the same as model_name
         self.model_name_or_path = os.path.join(self.base_path, 'bert-base-chinese')
