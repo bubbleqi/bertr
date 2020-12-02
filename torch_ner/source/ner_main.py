@@ -188,6 +188,54 @@ class NerMain(object):
             writer.close()
             logging.info("bert_bilstm_crf model training successful!!!")
 
+        if self.config.do_test:
+            tokenizer = BertTokenizer.from_pretrained(self.config.output_path, do_lower_case=self.config.do_lower_case)
+            config = torch.load(os.path.join(self.config.output_path, 'training_args.bin'))
+            model = BERT_BiLSTM_CRF.from_pretrained(self.config.output_path, need_birnn=self.config.need_birnn,
+                                                    rnn_dim=self.config.rnn_dim)
+            model.to(device)
+
+            test_examples, test_features, test_data = self.processor.get_dataset(config, tokenizer, mode="test")
+
+            logging.info("***** Running test *****")
+            logging.info(f"Num examples = {len(test_examples)}")
+            logging.info(f"Batch size = {config.eval_batch_size}")
+
+            all_ori_tokens = [f.ori_tokens for f in test_features]
+            all_ori_labels = [e.label.split(" ") for e in test_examples]
+            test_sampler = SequentialSampler(test_data)
+            test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=config.eval_batch_size)
+            model.eval()
+
+            pred_labels = []
+
+            for b_i, (input_ids, input_mask, segment_ids, label_ids) in enumerate(
+                    tqdm(test_dataloader, desc="Predicting")):
+
+                input_ids = input_ids.to(device)
+                input_mask = input_mask.to(device)
+                segment_ids = segment_ids.to(device)
+
+                with torch.no_grad():
+                    logits = model.predict(input_ids, segment_ids, input_mask)
+
+                for l in logits:
+                    pred_label = []
+                    for idx in l:
+                        pred_label.append(id2label[idx])
+                    pred_labels.append(pred_label)
+
+            assert len(pred_labels) == len(all_ori_tokens) == len(all_ori_labels)
+            print(len(pred_labels))
+            with open(os.path.join(config.output_path, "token_labels_.txt"), "w", encoding="utf-8") as f:
+                for ori_tokens, ori_labels, prel in zip(all_ori_tokens, all_ori_labels, pred_labels):
+                    for ot, ol, pl in zip(ori_tokens, ori_labels, prel):
+                        if ot in ["[CLS]", "[SEP]"]:
+                            continue
+                        else:
+                            f.write(f"{ot} {ol} {pl}\n")
+                    f.write("\n")
+
     # set the random seed for repeat
     @staticmethod
     def set_seed(args):
