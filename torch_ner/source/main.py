@@ -31,11 +31,68 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 from torch_ner.source.models import BERT_BiLSTM_CRF
 from torch_ner.source.ner_processor import NerProcessor
 from torch_ner.source.config import Config
+import torch_ner.source.conlleval as conlleval
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 config = Config()
+
+
+# set the random seed for repeat
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.n_gpu > 0:
+        torch.cuda.manual_seed_all(args.seed)
+
+
+def to_list(tensor):
+    return tensor.detach().cpu().tolist()
+
+
+def boolean_string(s):
+    if s not in {'False', 'True'}:
+        raise ValueError('Not a valid boolean string')
+    return s == 'True'
+
+
+def evaluate(config: Config, data, model, id2label, all_ori_tokens):
+    ori_labels, pred_labels = [], []
+    model.eval()
+    sampler = SequentialSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=config.train_batch_size)
+    for b_i, (input_ids, input_mask, segment_ids, label_ids) in enumerate(tqdm(dataloader, desc="Evaluating")):
+        input_ids = input_ids.to(config.device)
+        input_mask = input_mask.to(config.device)
+        segment_ids = segment_ids.to(config.device)
+        label_ids = label_ids.to(config.device)
+        with torch.no_grad():
+            logits = model.predict(input_ids, segment_ids, input_mask)
+
+        for l in logits:
+            pred_labels.append([id2label[idx] for idx in l])
+
+        for l in label_ids:
+            ori_labels.append([id2label[idx.item()] for idx in l])
+
+    eval_list = []
+    for ori_tokens, oril, prel in zip(all_ori_tokens, ori_labels, pred_labels):
+        for ot, ol, pl in zip(ori_tokens, oril, prel):
+            if ot in ["[CLS]", "[SEP]"]:
+                continue
+            eval_list.append(f"{ot} {ol} {pl}\n")
+        eval_list.append("\n")
+
+    # eval the model
+    counts = conlleval.evaluate(eval_list)
+    conlleval.report(counts)
+
+    # namedtuple('Metrics', 'tp fp fn prec rec fscore')
+    overall, by_type = conlleval.metrics(counts)
+
+    return overall, by_type
 
 
 def clean_output(config: Config):
@@ -77,7 +134,8 @@ def clean_output(config: Config):
 
 def train():
     # 配置可用设备
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else config.device)
+    config.device = device
     n_gpu = torch.cuda.device_count()
     logging.info(f"available device: {device}，count_gpu: {n_gpu}")
 
@@ -125,11 +183,12 @@ def train():
         # 数据加载器，结合了数据集和取样器，并且可以提供多个线程处理数据集
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.train_batch_size)
 
+        eval_examples, eval_features, eval_data = [], [], None
         if config.do_eval:
-            eval_examples, eval_features, eval_data = processor.get_dataset(config, tokenizer, mode="train")
+            eval_examples, eval_features, eval_data = processor.get_dataset(config, tokenizer, mode="eval")
 
         logging.info("loading AdamW optimizer、WarmupLinearSchedule and calculate optimizer parameter...")
-        # 计算优化器更新次数、训练轮次
+        # 计算优化器_模型参数的总更新次数、训练轮次
         if config.max_steps > 0:
             t_total = config.max_steps
             config.num_train_epochs = config.max_steps // (
@@ -172,6 +231,7 @@ def train():
                 loss.backward()
                 tr_loss += loss.item()
 
+                # 优化器_模型参数的总更新次数，和上面的t_total对应
                 if (step + 1) % config.gradient_accumulation_steps == 0:
                     optimizer.step()
                     scheduler.step()  # Update learning rate schedule
@@ -182,6 +242,34 @@ def train():
                         tr_loss_avg = (tr_loss - logging_loss) / config.logging_steps
                         writer.add_scalar("Train/loss", tr_loss_avg, global_step)
                         logging_loss = tr_loss
+
+            # 模型验证
+            if config.do_eval:
+                logging.info("********* Running eval **********")
+                all_ori_tokens_eval = [f.ori_tokens for f in eval_features]
+                overall, by_type = evaluate(config, eval_data, model, id2label, all_ori_tokens_eval)
+
+                # add eval result to tensorboard
+                f1_score = overall.fscore
+                writer.add_scalar("Eval/precision", overall.prec, ep)
+                writer.add_scalar("Eval/recall", overall.rec, ep)
+                writer.add_scalar("Eval/f1_score", overall.fscore, ep)
+
+                # save the best performs model
+                if f1_score > best_f1:
+                    logging.info(f"----------the best f1 is {f1_score}, save model---------")
+                    best_f1 = f1_score
+                    # Take care of distributed/parallel training
+                    model_to_save = model.module if hasattr(model,
+                                                            'module') else model
+                    model_to_save.save_pretrained(config.output_path)
+                    tokenizer.save_pretrained(config.output_path)
+
+                    # Good practice: save your training arguments together with the trained model
+                    torch.save(config, os.path.join(config.output_path, 'training_args.bin'))
+                    torch.save(model, os.path.join(config.output_path, 'ner_model.ckpt'))
+        writer.close()
+        logging.info("bert_bilstm_crf model training successful!!!")
 
 
 if __name__ == '__main__':

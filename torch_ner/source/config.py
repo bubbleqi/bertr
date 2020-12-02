@@ -45,6 +45,7 @@ class Config(object):
         # Where do you want to store the pre-trained models downloaded from s3
         self.cache_dir = os.path.join(self.base_path, 'bert-base-chinese')
         self.label_list = []
+        self.device = "cpu"
 
         # 以下是模型训练参数
         self.do_train = True
