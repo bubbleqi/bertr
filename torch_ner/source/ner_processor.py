@@ -222,17 +222,18 @@ class NerProcessor(object):
         return examples
 
     @staticmethod
-    def read_data(input_file):
+    def read_data(input_file, separator="\t"):
         """
         读取输入数据
         :param input_file:
+        :param separator:
         :return:
         """
         with open(input_file, "r", encoding="utf-8") as f:
             lines, words, labels = [], [], []
             for line in f.readlines():
                 contends = line.strip()
-                tokens = line.strip().split("\t")
+                tokens = line.strip().split(separator)
                 if len(tokens) == 2:
                     words.append(tokens[0])
                     labels.append(tokens[1])
@@ -285,3 +286,32 @@ class NerProcessor(object):
 
         if not os.path.exists(os.path.join(config.output_path, "eval")):
             os.makedirs(os.path.join(config.output_path, "eval"))
+
+    def clean_old_data_set(self, old_data: str, new_data: str, size: int, separator="\t"):
+        wf = open(new_data, "w", encoding="utf-8")
+        lines = self.read_data(old_data, separator=separator)
+        count = 1
+        for i, line in enumerate(lines):
+            lab_list = line[0].split()
+            sen_list = line[1].split()
+            sentence = "".join(sen_list)
+            label_list = list(lab_list)
+            word_list = list(sentence)
+
+            flag = False
+            for sen in sen_list:
+                if len(sen) != 1:
+                    flag = True
+                    break
+            if flag:
+                continue
+
+            if len(sentence) <= 128:
+                if count <= size:
+                    for idx, word in enumerate(word_list):
+                        new_line = word + "\t" + label_list[idx] + "\n"
+                        wf.write(new_line)
+                    wf.write("\n")
+                    count += 1
+                else:
+                    break
