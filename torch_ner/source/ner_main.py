@@ -240,12 +240,9 @@ class NerMain(object):
         max_seq_length = 128
         tokenizer = BertTokenizer.from_pretrained(self.config.output_path)
         textlist = list(sentence)
-        print(textlist)
         tokens = []
         for word in textlist:
             tokens.extend(tokenizer.tokenize(word))
-
-        print(tokens)
 
         if len(tokens) >= max_seq_length - 1:
             tokens = tokens[0:(max_seq_length - 2)]  # -2 的原因是因为序列需要加一个句首和句尾标志
@@ -273,18 +270,12 @@ class NerMain(object):
         segment_ids = segment_ids.to("cpu")
         input_mask = input_mask.to("cpu")
 
-        print(input_ids.shape, segment_ids.shape, input_mask.shape)
-
         input_ids = input_ids.unsqueeze(0)
         segment_ids = segment_ids.unsqueeze(0)
         input_mask = input_mask.unsqueeze(0)
 
-        print(input_ids.shape, segment_ids.shape, input_mask.shape)
-
         model = torch.load(os.path.join(self.config.output_path, "ner_model.ckpt"))
         model.eval()
-
-        print("=========================")
         with torch.no_grad():
             logits = model.predict(input_ids, segment_ids, input_mask)
 
@@ -303,28 +294,11 @@ class NerMain(object):
 
         print(pred_labels)
 
-    # set the random seed for repeat
-    @staticmethod
-    def set_seed(args):
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        if args.n_gpu > 0:
-            torch.cuda.manual_seed_all(args.seed)
-
-    @staticmethod
-    def to_list(tensor):
-        return tensor.detach().cpu().tolist()
-
-    @staticmethod
-    def boolean_string(s):
-        if s not in {'False', 'True'}:
-            raise ValueError('Not a valid boolean string')
-        return s == 'True'
-
     @staticmethod
     def evaluate(config: Config, data, model, id2label, all_ori_tokens):
         ori_labels, pred_labels = [], []
+        if isinstance(model, torch.nn.DataParallel):
+            model = model.module
         model.eval()
         sampler = SequentialSampler(data)
         data_loader = DataLoader(data, sampler=sampler, batch_size=config.train_batch_size)
@@ -360,4 +334,4 @@ class NerMain(object):
 
 
 if __name__ == '__main__':
-    NerMain().train()
+    NerMain().predict("张三的爸爸是谁?")
