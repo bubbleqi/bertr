@@ -274,7 +274,11 @@ class NerMain(object):
         segment_ids = segment_ids.unsqueeze(0)
         input_mask = input_mask.unsqueeze(0)
 
-        model = torch.load(os.path.join(self.config.output_path, "ner_model.ckpt"))
+        model = torch.load(os.path.join(self.config.output_path, "ner_model.ckpt"), map_location="cpu")
+
+        if isinstance(model, torch.nn.DataParallel):
+            model = model.module
+
         model.eval()
         with torch.no_grad():
             logits = model.predict(input_ids, segment_ids, input_mask)
