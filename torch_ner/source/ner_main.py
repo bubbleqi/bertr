@@ -32,10 +32,7 @@ from torch_ner.source.models import BERT_BiLSTM_CRF
 from torch_ner.source.ner_processor import NerProcessor
 from torch_ner.source.config import Config
 import torch_ner.source.conlleval as conlleval
-
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt='%m/%d/%Y %H:%M:%S',
-                    level=logging.INFO)
+from torch_ner.source.logger import logger as logging
 
 
 class NerMain(object):

@@ -12,10 +12,7 @@ import pickle
 from torch.utils.data import TensorDataset
 from torch_ner.source.config import Config
 from tqdm import tqdm
-
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt='%m/%d/%Y %H:%M:%S',
-                    level=logging.INFO)
+from torch_ner.source.logger import logger as logging
 
 
 class InputExample(object):
