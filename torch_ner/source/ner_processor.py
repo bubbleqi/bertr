@@ -250,7 +250,7 @@ class NerProcessor(object):
     @staticmethod
     def clean_output(config: Config):
         """
-        清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
+        清理output_xxx目录，若output_xxx目录存在，将会被删除, 然后初始化输出目录
         :param config:
         :return:
         """

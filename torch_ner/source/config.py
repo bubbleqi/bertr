@@ -3,6 +3,7 @@
 # @author: zchen
 # @time: 2020/11/29 19:49
 # @file: config.py
+import datetime
 import os
 import threading
 
@@ -39,7 +40,8 @@ class Config(object):
         self.train_file = os.path.join(self.base_path, 'data', 'train.txt')
         self.eval_file = os.path.join(self.base_path, 'data', 'eval.txt')
         self.test_file = os.path.join(self.base_path, 'data', 'test.txt')
-        self.output_path = os.path.join(self.base_path, 'output')
+        self.output_path = os.path.join(self.base_path, 'output', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+
         # Pretrained model name or path if not the same as model_name
         self.model_name_or_path = os.path.join(self.base_path, 'bert-base-chinese')
         # Where do you want to store the pre-trained models downloaded from s3

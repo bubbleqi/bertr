@@ -56,7 +56,7 @@ class NerMain(object):
             raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
                 self.config.gradient_accumulation_steps))
 
-        # 清理output目录，若output目录存在，将会被删除, 然后初始化输出目录
+        # 清理output_xxx目录，若output_xxx目录存在，将会被删除, 然后初始化输出目录
         self.processor.clean_output(self.config)
 
         writer = SummaryWriter(logdir=os.path.join(self.config.output_path, "eval"), comment="Linear")
