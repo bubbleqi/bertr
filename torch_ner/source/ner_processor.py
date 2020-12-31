@@ -13,6 +13,7 @@ from torch.utils.data import TensorDataset
 from torch_ner.source.config import Config
 from tqdm import tqdm
 from torch_ner.source.logger import logger as logging
+from torch_ner.source.utils import load_pkl, load_file, save_pkl
 
 
 class InputExample(object):
@@ -45,24 +46,22 @@ class NerProcessor(object):
         :return:
         """
         labels = set()
-        if os.path.exists(os.path.join(config.output_path, "label_list.pkl")):
+        label_pkl_path = os.path.join(config.output_path, "label_list.pkl")
+        if os.path.exists(label_pkl_path):
             logging.info(f"loading labels info from {config.output_path}")
-            with open(os.path.join(config.output_path, "label_list.pkl"), "rb") as f:
-                labels = pickle.load(f)
+            labels = load_pkl(label_pkl_path)
         else:
             # get labels from train data
             logging.info(f"loading labels info from train file and dump in {config.output_path}")
-            with open(config.train_file, encoding="utf-8") as f:
-                for line in f.readlines():
-                    tokens = line.strip().split("\t")
-                    if len(tokens) == 2:
-                        labels.add(tokens[1])
+            tokens_list = load_file(config.train_file, sep="\t")
+            for tokens in tokens_list:
+                if len(tokens) == 2:
+                    labels.add(tokens[1])
 
             if len(labels) == 0:
                 ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
 
-            with open(os.path.join(config.output_path, "label_list.pkl"), "wb") as f:
-                pickle.dump(labels, f)
+            save_pkl(labels, label_pkl_path)
         return labels
 
     @staticmethod
@@ -73,13 +72,12 @@ class NerProcessor(object):
         :param label_list:
         :return:
         """
-        if os.path.exists(os.path.join(output_path, "label2id.pkl")):
-            with open(os.path.join(output_path, "label2id.pkl"), "rb") as f:
-                label2id = pickle.load(f)
+        label2id_path = os.path.join(output_path, "label2id.pkl")
+        if os.path.exists(label2id_path):
+            label2id = load_pkl(label2id_path)
         else:
             label2id = {l: i for i, l in enumerate(label_list)}
-            with open(os.path.join(output_path, "label2id.pkl"), "wb") as f:
-                pickle.dump(label2id, f)
+            save_pkl(label2id, label2id_path)
 
         id2label = {value: key for key, value in label2id.items()}
         return label2id, id2label
