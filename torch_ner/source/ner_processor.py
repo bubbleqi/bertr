@@ -5,9 +5,7 @@
 # @file: ner_processor.py
 import logging
 import os
-import sys
 import torch
-import pickle
 
 from torch.utils.data import TensorDataset
 from torch_ner.source.config import Config
@@ -45,23 +43,20 @@ class NerProcessor(object):
         :param config:
         :return:
         """
-        labels = set()
         label_pkl_path = os.path.join(config.output_path, "label_list.pkl")
         if os.path.exists(label_pkl_path):
             logging.info(f"loading labels info from {config.output_path}")
             labels = load_pkl(label_pkl_path)
         else:
-            # get labels from train data
             logging.info(f"loading labels info from train file and dump in {config.output_path}")
             tokens_list = load_file(config.train_file, sep="\t")
-            for tokens in tokens_list:
-                if len(tokens) == 2:
-                    labels.add(tokens[1])
+            labels = set([tokens[1] for tokens in tokens_list if len(tokens) == 2])
 
-            if len(labels) == 0:
-                ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
-
+        if len(labels) == 0:
+            ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
+        else:
             save_pkl(labels, label_pkl_path)
+
         return labels
 
     @staticmethod
@@ -84,7 +79,12 @@ class NerProcessor(object):
 
     def get_dataset(self, config: Config, tokenizer, mode="train"):
         """
-        获取数据集，包括InputExample(guid=guid, text=text, label=label)、features、TensorDataset
+        对指定数据集进行预处理，进一步封装数据，包括:
+        examples：[InputExample(guid=index, text=text, label=label)]
+        features：[InputFeatures(input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids,
+                                  label_id=label_ids, ori_tokens=ori_tokens)]
+        data： 数据集
+
         :param config:
         :param tokenizer:
         :param mode:
@@ -99,7 +99,7 @@ class NerProcessor(object):
         else:
             raise ValueError("mode must be one of train, eval, or test")
 
-        # 通过读取输入数据，封装输入样本
+        # 读取输入数据，进一步封装
         examples = self.get_input_examples(filepath)
 
         # 对输入数据进行特征转换
