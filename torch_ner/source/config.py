@@ -40,6 +40,7 @@ class Config(object):
         self.train_file = os.path.join(self.base_path, 'data', 'train.txt')
         self.eval_file = os.path.join(self.base_path, 'data', 'eval.txt')
         self.test_file = os.path.join(self.base_path, 'data', 'test.txt')
+        self.log_path = os.path.join(self.base_path, 'output', "logs")
         self.output_path = os.path.join(self.base_path, 'output', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
 
         # Pretrained model name or path if not the same as model_name

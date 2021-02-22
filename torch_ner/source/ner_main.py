@@ -6,26 +6,16 @@
 
 from __future__ import absolute_import, division, print_function
 
-import csv
-import logging
 import os
-import random
-import json
-import sys
-import datetime
-import time
-import numpy as np
 import torch
 import torch.nn.functional as F
 import pickle
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
-                              TensorDataset)
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, )
 
 from tqdm import tqdm, trange
 from tensorboardX import SummaryWriter
 
-from pytorch_transformers import (WEIGHTS_NAME, BertConfig, BertTokenizer)
+from pytorch_transformers import (BertConfig, BertTokenizer)
 from pytorch_transformers import AdamW, WarmupLinearSchedule
 
 from torch_ner.source.models import BERT_BiLSTM_CRF
