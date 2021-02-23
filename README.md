@@ -103,8 +103,8 @@ NerMain().predict()
 ```
 
 ##### 参考文章
-[从Word Embedding到Bert模型——自然语言处理预训练技术发展史](https://mp.weixin.qq.com/s/FHDpx2cYYh9GZsa5nChi4g)
-[通俗易懂理解——BiLSTM](https://zhuanlan.zhihu.com/p/40119926)
-[详解BiLSTM及代码实现](https://zhuanlan.zhihu.com/p/47802053)
-[LSTM+CRF 解析（原理篇）](https://zhuanlan.zhihu.com/p/97829287)
-[crf模型原理及解释](crf模型原理及解释)
+- [从Word Embedding到Bert模型——自然语言处理预训练技术发展史](https://mp.weixin.qq.com/s/FHDpx2cYYh9GZsa5nChi4g)
+- [通俗易懂理解——BiLSTM](https://zhuanlan.zhihu.com/p/40119926)  
+- [详解BiLSTM及代码实现](https://zhuanlan.zhihu.com/p/47802053)  
+- [LSTM+CRF 解析（原理篇）](https://zhuanlan.zhihu.com/p/97829287)  
+- [crf模型原理及解释](crf模型原理及解释)
