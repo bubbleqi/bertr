@@ -185,8 +185,8 @@ class NerProcessor(object):
             assert len(segment_ids) == max_seq_length
             assert len(label_ids) == max_seq_length
 
-            if ex_index < 5:
-                logging.info("*** Example ***")
+            if ex_index < 2:
+                logging.info("****** Example ******")
                 logging.info("guid: %s" % example.guid)
                 logging.info("tokens: %s" % " ".join([str(x) for x in ntokens]))
                 logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
