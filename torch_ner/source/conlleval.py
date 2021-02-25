@@ -22,16 +22,17 @@ ANY_SPACE = '<SPACE>'
 class FormatError(Exception):
     pass
 
+
 Metrics = namedtuple('Metrics', 'tp fp fn prec rec fscore')
 
 
 class EvalCounts(object):
     def __init__(self):
-        self.correct_chunk = 0    # number of correctly identified chunks
-        self.correct_tags = 0     # number of correct chunk tags
-        self.found_correct = 0    # number of chunks in corpus
-        self.found_guessed = 0    # number of identified chunks
-        self.token_counter = 0    # token counter (ignores sentence breaks)
+        self.correct_chunk = 0  # number of correctly identified chunks
+        self.correct_tags = 0  # number of correct chunk tags
+        self.found_correct = 0  # number of chunks in corpus
+        self.found_guessed = 0  # number of identified chunks
+        self.token_counter = 0  # token counter (ignores sentence breaks)
 
         # counts by type
         self.t_correct_chunk = defaultdict(int)
@@ -63,15 +64,15 @@ def parse_tag(t):
 
 def evaluate(iterable, options=None):
     if options is None:
-        options = parse_args([])    # use defaults
+        options = parse_args([])  # use defaults
 
     counts = EvalCounts()
-    num_features = None       # number of features per line
-    in_correct = False        # currently processed chunks is correct until now
-    last_correct = 'O'        # previous chunk tag in corpus
-    last_correct_type = ''    # type of previously identified chunk tag
-    last_guessed = 'O'        # previously identified chunk tag
-    last_guessed_type = ''    # type of previous chunk tag in corpus
+    num_features = None  # number of features per line
+    in_correct = False  # currently processed chunks is correct until now
+    last_correct = 'O'  # previous chunk tag in corpus
+    last_correct_type = ''  # type of previously identified chunk tag
+    last_guessed = 'O'  # previously identified chunk tag
+    last_guessed_type = ''  # type of previous chunk tag in corpus
 
     for line in iterable:
         line = line.rstrip('\r\n')
@@ -110,7 +111,7 @@ def evaluate(iterable, options=None):
 
         if in_correct:
             if (end_correct and end_guessed and
-                last_guessed_type == last_correct_type):
+                    last_guessed_type == last_correct_type):
                 in_correct = False
                 counts.correct_chunk += 1
                 counts.t_correct_chunk[last_correct_type] += 1
@@ -143,16 +144,15 @@ def evaluate(iterable, options=None):
     return counts
 
 
-
 def uniq(iterable):
-  seen = set()
-  return [i for i in iterable if not (i in seen or seen.add(i))]
+    seen = set()
+    return [i for i in iterable if not (i in seen or seen.add(i))]
 
 
 def calculate_metrics(correct, guessed, total):
-    tp, fp, fn = correct, guessed-correct, total-correct
-    p = 0 if tp + fp == 0 else 1.*tp / (tp + fp)
-    r = 0 if tp + fn == 0 else 1.*tp / (tp + fn)
+    tp, fp, fn = correct, guessed - correct, total - correct
+    p = 0 if tp + fp == 0 else 1. * tp / (tp + fp)
+    r = 0 if tp + fn == 0 else 1. * tp / (tp + fn)
     f = 0 if p + r == 0 else 2 * p * r / (p + r)
     return Metrics(tp, fp, fn, p, r, f)
 
@@ -184,16 +184,16 @@ def report(counts, out=None):
 
     if c.token_counter > 0:
         out.write('accuracy: %6.2f%%; ' %
-                  (100.*c.correct_tags/c.token_counter))
-        out.write('precision: %6.2f%%; ' % (100.*overall.prec))
-        out.write('recall: %6.2f%%; ' % (100.*overall.rec))
-        out.write('FB1: %6.2f\n' % (100.*overall.fscore))
+                  (100. * c.correct_tags / c.token_counter))
+        out.write('precision: %6.2f%%; ' % (100. * overall.prec))
+        out.write('recall: %6.2f%%; ' % (100. * overall.rec))
+        out.write('FB1: %6.2f\n' % (100. * overall.fscore))
 
     for i, m in sorted(by_type.items()):
         out.write('%17s: ' % i)
-        out.write('precision: %6.2f%%; ' % (100.*m.prec))
-        out.write('recall: %6.2f%%; ' % (100.*m.rec))
-        out.write('FB1: %6.2f  %d\n' % (100.*m.fscore, c.t_found_guessed[i]))
+        out.write('precision: %6.2f%%; ' % (100. * m.prec))
+        out.write('recall: %6.2f%%; ' % (100. * m.rec))
+        out.write('FB1: %6.2f  %d\n' % (100. * m.fscore, c.t_found_guessed[i]))
 
 
 def report_notprint(counts, out=None):
@@ -206,26 +206,26 @@ def report_notprint(counts, out=None):
     final_report = []
     line = []
     line.append('processed %d tokens with %d phrases; ' %
-              (c.token_counter, c.found_correct))
+                (c.token_counter, c.found_correct))
     line.append('found: %d phrases; correct: %d.\n' %
-              (c.found_guessed, c.correct_chunk))
+                (c.found_guessed, c.correct_chunk))
     final_report.append("".join(line))
 
     if c.token_counter > 0:
         line = []
         line.append('accuracy: %6.2f%%; ' %
-                  (100.*c.correct_tags/c.token_counter))
-        line.append('precision: %6.2f%%; ' % (100.*overall.prec))
-        line.append('recall: %6.2f%%; ' % (100.*overall.rec))
-        line.append('FB1: %6.2f\n' % (100.*overall.fscore))
+                    (100. * c.correct_tags / c.token_counter))
+        line.append('precision: %6.2f%%; ' % (100. * overall.prec))
+        line.append('recall: %6.2f%%; ' % (100. * overall.rec))
+        line.append('FB1: %6.2f\n' % (100. * overall.fscore))
         final_report.append("".join(line))
 
     for i, m in sorted(by_type.items()):
         line = []
         line.append('%17s: ' % i)
-        line.append('precision: %6.2f%%; ' % (100.*m.prec))
-        line.append('recall: %6.2f%%; ' % (100.*m.rec))
-        line.append('FB1: %6.2f  %d\n' % (100.*m.fscore, c.t_found_guessed[i]))
+        line.append('precision: %6.2f%%; ' % (100. * m.prec))
+        line.append('recall: %6.2f%%; ' % (100. * m.rec))
+        line.append('FB1: %6.2f  %d\n' % (100. * m.fscore, c.t_found_guessed[i]))
         final_report.append("".join(line))
     return final_report
 
@@ -295,6 +295,7 @@ def main(argv):
         with open(args.file) as f:
             counts = evaluate(f, args)
     report(counts)
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

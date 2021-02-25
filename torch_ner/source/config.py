@@ -10,12 +10,12 @@ import threading
 
 class Config(object):
     _instance_lock = threading.Lock()
-    __init_flag = False
+    _init_flag = False
 
     def __init__(self):
-        if not Config.__init_flag:
+        if not Config._init_flag:
             print("===================>>>Config<<<=========================")
-            Config.__init_flag = True
+            Config._init_flag = True
             root_path = str(os.getcwd()).replace("\\", "/")
             if 'source' in root_path.split('/'):
                 self.base_path = os.path.abspath(os.path.join(os.path.pardir))
@@ -52,25 +52,19 @@ class Config(object):
 
         # 以下是模型训练参数
         self.do_train = True
-        self.do_eval = True
         self.do_test = True
+        self.do_eval = False
+        self.clean = True
+        self.need_birnn = True
+        self.do_lower_case = True
         self.max_seq_length = 256
         self.train_batch_size = 8
         self.eval_batch_size = 8
         self.learning_rate = 3e-5
         self.num_train_epochs = 10
-        self.warmup_proprotion = 0.1
-        self.use_weight = 1
-        self.local_rank = -1
-        self.seed = 2019
-        self.fp16 = False
-        self.loss_scale = 0
+        self.rnn_dim = 128
         self.gradient_accumulation_steps = 1
         self.warmup_steps = 0
         self.adam_epsilon = 1e-8
         self.max_steps = -1
-        self.do_lower_case = True
         self.logging_steps = 500
-        self.clean = True
-        self.need_birnn = True
-        self.rnn_dim = 128
