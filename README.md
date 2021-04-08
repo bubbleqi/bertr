@@ -11,10 +11,10 @@ bert_bilstm_crf_ner_pytorch
         output                      --- 项目输出，包含模型、向量表示、日志信息等
         source                      --- 源代码
             config.py               --- 项目配置，模型参数
-			models                  --- bert_bilstm_crf的torch实现
             conlleval.py            --- 模型验证
-            ner_main.py             --- 训练主模块，包含训练、保存向量表示、预测等
             logger.py               --- 项目日志配置
+            models.py               --- bert_bilstm_crf的torch实现
+            ner_main.py             --- 训练主模块，包含训练、保存向量表示、预测等
             ner_processor.py        --- 数据预处理
             utils.py                --- 工具包
 ```
@@ -39,45 +39,29 @@ bert_bilstm_crf_ner_pytorch
 鹰 I-LOC
 大 I-LOC
 道 I-LOC
-2 I-LOC
-号 I-LOC
-电 I-LOC
-信 I-LOC
-大 I-LOC
-楼 I-LOC
 租 O
 房 O
 住 O
-7 B-DATE
-年 I-DATE
 的 O
-田 B-FNAME
+张 B-FNAME
 之 B-LNAME
-桃 I-LNAME
+三 I-LNAME
 是 O
 什 O
 么 O
 人 O
 ？ O
 
-在 O
-广 B-LOC
-西 I-LOC
-壮 I-LOC
-族 I-LOC
-自 I-LOC
-治 I-LOC
-区 I-LOC
-柳 I-LOC
-州 I-LOC
+辽 B-LOC
+宁 I-LOC
+省 I-LOC
+海 I-LOC
+城 I-LOC
 市 I-LOC
-柳 I-LOC
-南 I-LOC
-区 I-LOC
-航 I-LOC
-鹰 I-LOC
-大 I-LOC
-道 I-LOC
+的 O
+李 B-FNAME
+丘 I-FNAME
+闪 B-LNAME
 ```
 ##### 运行环境
 ```
@@ -92,15 +76,17 @@ torchcrf==1.1.0
 ```
 
 ##### 使用方法
-- 修改配置文件
+- 修改项目配置
 - 训练
 ```
-NerMain().train()
+train()
 ```
 - 预测
 ```
-NerMain().predict("xxx")
+predict("xxx")
 ```
+具体可参照`ner_main.py`
+
 ##### 关于BERT-BiLSTM-CRF
 ```
 class BERT_BiLSTM_CRF(BertPreTrainedModel):

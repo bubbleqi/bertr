@@ -14,7 +14,6 @@ class Config(object):
 
     def __init__(self):
         if not Config._init_flag:
-            print("===================>>>Config<<<=========================")
             Config._init_flag = True
             root_path = str(os.getcwd()).replace("\\", "/")
             if 'source' in root_path.split('/'):
@@ -37,6 +36,10 @@ class Config(object):
         return Config._instance
 
     def _init_train_config(self):
+        self.label_list = []
+        self.device = "cpu"
+
+        # 输入数据集、输出目录
         self.train_file = os.path.join(self.base_path, 'data', 'train.txt')
         self.eval_file = os.path.join(self.base_path, 'data', 'eval.txt')
         self.test_file = os.path.join(self.base_path, 'data', 'test.txt')
@@ -45,10 +48,6 @@ class Config(object):
 
         # Pretrained model name or path if not the same as model_name
         self.model_name_or_path = os.path.join(self.base_path, 'bert-base-chinese')
-        # Where do you want to store the pre-trained models downloaded from s3
-        self.cache_dir = os.path.join(self.base_path, 'bert-base-chinese')
-        self.label_list = []
-        self.device = "cpu"
 
         # 以下是模型训练参数
         self.do_train = True
