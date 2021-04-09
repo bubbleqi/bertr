@@ -63,7 +63,7 @@ class NerMain(object):
         logging.info("loading label2id and id2label dictionary successful!")
 
         if self.config.do_train:
-            # 初始化tokenizer(分词器)、bert_config、bert_bilstm_crf model
+            # 初始化tokenizer(分词器)、bert_config、BERT_BiLSTM_CRF
             tokenizer = BertTokenizer.from_pretrained(self.config.model_name_or_path,
                                                       o_lower_case=self.config.do_lower_case)
             bert_config = BertConfig.from_pretrained(self.config.model_name_or_path, num_labels=num_labels)
@@ -162,11 +162,10 @@ class NerMain(object):
 
                     # save the best performs model
                     if f1_score > best_f1:
-                        logging.info(f"***************** the best f1 is {f1_score}, save model *****************")
+                        logging.info(f"******** the best f1 is {f1_score}, save model !!! ********")
                         best_f1 = f1_score
                         # Take care of distributed/parallel training
-                        model_to_save = model.module if hasattr(model,
-                                                                'module') else model
+                        model_to_save = model.module if hasattr(model, 'module') else model
                         model_to_save.save_pretrained(self.config.output_path)
                         tokenizer.save_pretrained(self.config.output_path)
 
@@ -175,7 +174,7 @@ class NerMain(object):
                         torch.save(model, os.path.join(self.config.output_path, 'ner_model.ckpt'))
                         logging.info("training_args.bin and ner_model.ckpt save successful!")
             writer.close()
-            logging.info("bert_bilstm_crf model training successful!!!")
+            logging.info("NER model training successful!!!")
 
         if self.config.do_test:
             tokenizer = BertTokenizer.from_pretrained(self.config.output_path, do_lower_case=self.config.do_lower_case)

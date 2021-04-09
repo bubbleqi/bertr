@@ -81,8 +81,11 @@ class NerProcessor(object):
         """
         对指定数据集进行预处理，进一步封装数据，包括:
         examples：[InputExample(guid=index, text=text, label=label)]
-        features：[InputFeatures(input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids,
-                                  label_id=label_ids, ori_tokens=ori_tokens)]
+        features：[InputFeatures( input_ids=input_ids,
+                                  input_mask=input_mask,
+                                  segment_ids=segment_ids,
+                                  label_id=label_ids,
+                                  ori_tokens=ori_tokens)]
         data： 数据集
 
         :param config:
@@ -281,32 +284,3 @@ class NerProcessor(object):
 
         if not os.path.exists(os.path.join(config.output_path, "eval")):
             os.makedirs(os.path.join(config.output_path, "eval"))
-
-    def clean_old_data_set(self, old_data: str, new_data: str, size: int, separator="\t"):
-        wf = open(new_data, "w", encoding="utf-8")
-        lines = self.read_data(old_data, separator=separator)
-        count = 1
-        for i, line in enumerate(lines):
-            lab_list = line[0].split()
-            sen_list = line[1].split()
-            sentence = "".join(sen_list)
-            label_list = list(lab_list)
-            word_list = list(sentence)
-
-            flag = False
-            for sen in sen_list:
-                if len(sen) != 1:
-                    flag = True
-                    break
-            if flag:
-                continue
-
-            if len(sentence) <= 128:
-                if count <= size:
-                    for idx, word in enumerate(word_list):
-                        new_line = word + "\t" + label_list[idx] + "\n"
-                        wf.write(new_line)
-                    wf.write("\n")
-                    count += 1
-                else:
-                    break
