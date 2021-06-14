@@ -37,7 +37,9 @@ class Config(object):
 
     def _init_train_config(self):
         self.label_list = []
+        self.use_gpu = True
         self.device = "cpu"
+        self.sep = " "
 
         # 输入数据集、输出目录
         self.train_file = os.path.join(self.base_path, 'data', 'train.txt')
@@ -56,7 +58,7 @@ class Config(object):
         self.clean = True
         self.need_birnn = True
         self.do_lower_case = True
-        self.max_seq_length = 256
+        self.max_seq_length = 64
         self.train_batch_size = 8
         self.eval_batch_size = 8
         self.learning_rate = 3e-5
