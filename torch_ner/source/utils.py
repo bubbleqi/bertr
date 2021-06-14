@@ -7,8 +7,8 @@ import time
 from datetime import timedelta, datetime
 from glob import iglob
 from mmap import mmap, ACCESS_READ
-import numpy as np
 
+import numpy as np
 import yaml
 
 

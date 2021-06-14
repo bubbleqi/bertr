@@ -4,28 +4,26 @@
 # @time: 2020/11/29 20:09
 # @file: ner_main.py
 
-from __future__ import absolute_import, division, print_function
-
 import os
-import torch
 import pickle
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, )
 
-from tqdm import tqdm, trange
-from tensorboardX import SummaryWriter
-
-from pytorch_transformers import (BertConfig, BertTokenizer)
+import torch
 from pytorch_transformers import AdamW, WarmupLinearSchedule
+from pytorch_transformers import (BertConfig, BertTokenizer)
+from tensorboardX import SummaryWriter
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, )
+from tqdm import tqdm, trange
 
+import torch_ner.source.conlleval as evaluate
+from torch_ner.source.config import Config
+from torch_ner.source.logger import logger as logging
 from torch_ner.source.models import BERT_BiLSTM_CRF
 from torch_ner.source.ner_processor import NerProcessor
-from torch_ner.source.config import Config
-import torch_ner.source.conlleval as conlleval
-from torch_ner.source.logger import logger as logging
 
 
 class NerMain(object):
     def __init__(self):
+        # 初始化系统配置、数据预处理
         self.config = Config()
         self.processor = NerProcessor()
 
@@ -41,7 +39,8 @@ class NerMain(object):
         writer = SummaryWriter(logdir=os.path.join(self.config.output_path, "eval"), comment="ner")
 
         # 配置可用设备，没有指定使用哪一块gpu，则全部使用
-        device = torch.device('cuda' if torch.cuda.is_available() else self.config.device)
+        use_gpu = torch.cuda.is_available() and self.config.use_gpu
+        device = torch.device('cuda' if use_gpu else self.config.device)
         self.config.device = device
         n_gpu = torch.cuda.device_count()
         logging.info(f"available device: {device}，count_gpu: {n_gpu}")
@@ -63,16 +62,16 @@ class NerMain(object):
         logging.info("loading label2id and id2label dictionary successful!")
 
         if self.config.do_train:
-            # 初始化tokenizer(分词器)、bert_config、BERT_BiLSTM_CRF
+            # 初始化tokenizer(标记生成器)、bert_config、BERT_BiLSTM_CRF
             tokenizer = BertTokenizer.from_pretrained(self.config.model_name_or_path,
-                                                      o_lower_case=self.config.do_lower_case)
+                                                      do_lower_case=self.config.do_lower_case)
             bert_config = BertConfig.from_pretrained(self.config.model_name_or_path, num_labels=num_labels)
             model = BERT_BiLSTM_CRF.from_pretrained(self.config.model_name_or_path, config=bert_config,
                                                     need_birnn=self.config.need_birnn, rnn_dim=self.config.rnn_dim)
+            model.to(device)
             logging.info("loading tokenizer、bert_config and bert_bilstm_crf model successful!")
 
-            model.to(device)
-            if n_gpu > 1:
+            if use_gpu and n_gpu > 1:
                 model = torch.nn.DataParallel(model)
 
             # 获取训练样本、样本特征、TensorDataset信息
@@ -321,13 +320,13 @@ class NerMain(object):
             eval_list.append("\n")
 
         # eval the model
-        counts = conlleval.evaluate(eval_list)
-        conlleval.report(counts)
+        counts = evaluate.evaluate(eval_list)
+        evaluate.report(counts)
 
         # namedtuple('Metrics', 'tp fp fn prec rec fscore')
-        overall, by_type = conlleval.metrics(counts)
+        overall, by_type = evaluate.metrics(counts)
         return overall, by_type
 
 
 if __name__ == '__main__':
-    NerMain().predict("张三的爸爸是谁?")
+    NerMain().train()

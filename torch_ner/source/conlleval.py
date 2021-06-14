@@ -11,9 +11,9 @@
 
 # add function :evaluate(predicted_label, ori_label): which will not read from file
 
-import sys
-import re
 import codecs
+import re
+import sys
 from collections import defaultdict, namedtuple
 
 ANY_SPACE = '<SPACE>'

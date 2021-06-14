@@ -5,11 +5,12 @@
 # @file: ner_processor.py
 import logging
 import os
-import torch
 
+import torch
 from torch.utils.data import TensorDataset
-from torch_ner.source.config import Config
 from tqdm import tqdm
+
+from torch_ner.source.config import Config
 from torch_ner.source.logger import logger as logging
 from torch_ner.source.utils import load_pkl, load_file, save_pkl
 
@@ -49,7 +50,7 @@ class NerProcessor(object):
             labels = load_pkl(label_pkl_path)
         else:
             logging.info(f"loading labels info from train file and dump in {config.output_path}")
-            tokens_list = load_file(config.train_file, sep="\t")
+            tokens_list = load_file(config.train_file, sep=config.sep)
             labels = set([tokens[1] for tokens in tokens_list if len(tokens) == 2])
 
         if len(labels) == 0:
@@ -86,7 +87,7 @@ class NerProcessor(object):
                                   segment_ids=segment_ids,
                                   label_id=label_ids,
                                   ori_tokens=ori_tokens)]
-        data： 数据集
+        data： 处理完成的数据集, TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
 
         :param config:
         :param tokenizer:
@@ -103,7 +104,7 @@ class NerProcessor(object):
             raise ValueError("mode must be one of train, eval, or test")
 
         # 读取输入数据，进一步封装
-        examples = self.get_input_examples(filepath)
+        examples = self.get_input_examples(filepath, separator=config.sep)
 
         # 对输入数据进行特征转换
         features = self.convert_examples_to_features(config, examples, tokenizer)
@@ -121,6 +122,16 @@ class NerProcessor(object):
     def convert_examples_to_features(config: Config, examples, tokenizer):
         """
         对输入数据进行特征转换
+
+        例如:
+            ****** Example ******
+            guid: 0
+            tokens: [CLS] 王 辉 生 前 驾 驶 机 械 洒 药 消 毒 9 0 后 王 辉 ， 2 0 1 0 年 1 2 月 参 军 ， 2 0 1 5 年 1 2 月 退 伍 后 ， 先 是 应 聘 当 辅 警 ， 后 来 在 父 亲 成 立 的 扶 风 恒 盛 科 [SEP]
+            input_ids: 101 4374 6778 4495 1184 7730 7724 3322 3462 3818 5790 3867 3681 130 121 1400 4374 6778 8024 123 121 122 121 2399 122 123 3299 1346 1092 8024 123 121 122 126 2399 122 123 3299 6842 824 1400 8024 1044 3221 2418 5470 2496 6774 6356 8024 1400 3341 1762 4266 779 2768 4989 4638 2820 7599 2608 4670 4906 102
+            input_mask: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+            segment_ids: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+            label_ids: 2 5 3 2 2 2 2 2 2 2 2 2 2 4 11 11 5 3 2 4 11 11 11 11 11 11 11 2 2 2 4 11 11 11 11 11 11 11 2 2 2 2 2 2 2 2 2 0 14 2 2 2 2 2 2 2 2 2 12 7 7 7 7 2
+
         :param config:
         :param examples:
         :param tokenizer:
@@ -133,6 +144,7 @@ class NerProcessor(object):
             example_text_list = example.text.split(" ")
             example_label_list = example.label.split(" ")
             assert len(example_text_list) == len(example_label_list)
+
             tokens, labels, ori_tokens = [], [], []
             for i, word in enumerate(example_text_list):
                 # 防止wordPiece情况出现，不过貌似不会
@@ -140,7 +152,6 @@ class NerProcessor(object):
                 tokens.extend(token)
                 label_1 = example_label_list[i]
                 ori_tokens.append(word)
-
                 # 单个字符不会出现wordPiece
                 for m in range(len(token)):
                     if m == 0:
@@ -150,38 +161,37 @@ class NerProcessor(object):
                             labels.append("O")
                         else:
                             labels.append("I")
+
+            # 当句子长度大于自定义的最大句子长度时，删除多余的字符
             if len(tokens) >= max_seq_length - 1:
-                # -2 的原因是因为序列需要加一个句首和句尾标志
+                # -2的原因是因为序列需要加一个句首和句尾标志
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
                 ori_tokens = ori_tokens[0:(max_seq_length - 2)]
             ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
 
-            ntokens, segment_ids, label_ids = [], [], []
-            ntokens.append("[CLS]")
+            # 给序列加上句首和句尾标志
+            new_tokens, segment_ids, label_ids = [], [], []
+            new_tokens.append("[CLS]")
             segment_ids.append(0)
             label_ids.append(label_map["O"])
-
             for i, token in enumerate(tokens):
-                ntokens.append(token)
+                new_tokens.append(token)
                 segment_ids.append(0)
                 label_ids.append(label_map[labels[i]])
-
-            ntokens.append("[SEP]")
+            new_tokens.append("[SEP]")
             segment_ids.append(0)
             label_ids.append(label_map["O"])
-            input_ids = tokenizer.convert_tokens_to_ids(ntokens)
+            input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
             input_mask = [1] * len(input_ids)
-
-            assert len(ori_tokens) == len(ntokens), f"{len(ori_tokens)}, {len(ntokens)}, {ori_tokens}"
+            assert len(ori_tokens) == len(new_tokens), f"{len(ori_tokens)}, {len(new_tokens)}, {ori_tokens}"
 
             while len(input_ids) < max_seq_length:
                 input_ids.append(0)
                 input_mask.append(0)
                 segment_ids.append(0)
-                # we don't concerned about it!
                 label_ids.append(0)
-                ntokens.append("**NULL**")
+                new_tokens.append("**NULL**")
 
             assert len(input_ids) == max_seq_length
             assert len(input_mask) == max_seq_length
@@ -191,7 +201,7 @@ class NerProcessor(object):
             if ex_index < 2:
                 logging.info("****** Example ******")
                 logging.info("guid: %s" % example.guid)
-                logging.info("tokens: %s" % " ".join([str(x) for x in ntokens]))
+                logging.info("tokens: %s" % " ".join([str(x) for x in new_tokens]))
                 logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
                 logging.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
                 logging.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
@@ -204,14 +214,15 @@ class NerProcessor(object):
                                           ori_tokens=ori_tokens))
         return features
 
-    def get_input_examples(self, input_file):
+    def get_input_examples(self, input_file, separator=" "):
         """
         通过读取输入数据，封装输入样本
+        :param separator:
         :param input_file:
         :return:
         """
         examples = []
-        lines = self.read_data(input_file)
+        lines = self.read_data(input_file, separator=separator)
         for i, line in enumerate(lines):
             guid = str(i)
             text = line[1]
