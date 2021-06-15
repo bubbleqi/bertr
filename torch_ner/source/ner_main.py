@@ -78,8 +78,8 @@ class NerMain(object):
             train_examples, train_features, train_data = self.processor.get_dataset(self.config, tokenizer,
                                                                                     mode="train")
             # 训练数据载入
-            train_data_loader = DataLoader(train_data, sampler=RandomSampler(train_data),
-                                           batch_size=self.config.train_batch_size)
+            train_data_loader = DataLoader(train_data, batch_size=self.config.train_batch_size,
+                                           sampler=RandomSampler(train_data))
             logging.info("loading train data_set and data_loader successful!")
 
             eval_examples, eval_features, eval_data = [], [], None
@@ -87,7 +87,6 @@ class NerMain(object):
                 eval_examples, eval_features, eval_data = self.processor.get_dataset(self.config, tokenizer,
                                                                                      mode="eval")
                 logging.info("loading eval data_set successful!")
-
             logging.info("====================== End Data Pre-processing ======================")
 
             # 计算优化器_模型参数的总更新次数、训练轮次
@@ -126,19 +125,23 @@ class NerMain(object):
                     outputs = model(input_ids, label_ids, segment_ids, input_mask)
                     loss = outputs
 
-                    if n_gpu > 1:
-                        loss = loss.mean()  # mean() to average on multi-gpu.
+                    if use_gpu and n_gpu > 1:
+                        # mean() to average on multi-gpu.
+                        loss = loss.mean()
 
                     if self.config.gradient_accumulation_steps > 1:
                         loss = loss / self.config.gradient_accumulation_steps
 
+                    # 反向传播
                     loss.backward()
                     tr_loss += loss.item()
 
                     # 优化器_模型参数的总更新次数，和上面的t_total对应
                     if (step + 1) % self.config.gradient_accumulation_steps == 0:
+                        # 更新参数
                         optimizer.step()
-                        scheduler.step()  # Update learning rate schedule
+                        scheduler.step()
+                        # 梯度清零
                         model.zero_grad()
                         global_step += 1
 
@@ -169,7 +172,7 @@ class NerMain(object):
                         tokenizer.save_pretrained(self.config.output_path)
 
                         # Good practice: save your training arguments together with the trained model
-                        torch.save(self.config, os.path.join(self.config.output_path, 'training_args.bin'))
+                        torch.save(self.config, os.path.join(self.config.output_path, 'training_config.bin'))
                         torch.save(model, os.path.join(self.config.output_path, 'ner_model.ckpt'))
                         logging.info("training_args.bin and ner_model.ckpt save successful!")
             writer.close()
@@ -177,7 +180,7 @@ class NerMain(object):
 
         if self.config.do_test:
             tokenizer = BertTokenizer.from_pretrained(self.config.output_path, do_lower_case=self.config.do_lower_case)
-            config = torch.load(os.path.join(self.config.output_path, 'training_args.bin'))
+            config = torch.load(os.path.join(self.config.output_path, 'training_config.bin'))
             model = BERT_BiLSTM_CRF.from_pretrained(self.config.output_path, need_birnn=self.config.need_birnn,
                                                     rnn_dim=self.config.rnn_dim)
             model.to(device)
