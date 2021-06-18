@@ -53,14 +53,14 @@ class Config(object):
 
         # 以下是模型训练参数
         self.do_train = True
-        self.do_test = True
-        self.do_eval = False
+        self.do_eval = True
+        self.do_test = False
         self.clean = True
         self.need_birnn = True
         self.do_lower_case = True
-        self.max_seq_length = 64
-        self.train_batch_size = 8
-        self.eval_batch_size = 8
+        self.max_seq_length = 128
+        self.train_batch_size = 16
+        self.eval_batch_size = 16
         self.learning_rate = 3e-5
         self.num_train_epochs = 10
         self.rnn_dim = 128
