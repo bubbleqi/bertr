@@ -27,64 +27,31 @@ class InputExample(object):
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, input_mask, segment_ids, label_id, ori_tokens):
+    def __init__(self, input_ids, token_type_ids, attention_mask, label_id, ori_tokens):
+        """
+
+        :param input_ids:   单词在词典中的编码
+        :param attention_mask:  指定 对哪些词 进行self-Attention操作
+        :param token_type_ids: 区分两个句子的编码（上句全为0，下句全为1）
+        :param label_id:    标签的id
+        :param ori_tokens:
+        """
         self.input_ids = input_ids
-        self.input_mask = input_mask
-        self.segment_ids = segment_ids
+        self.token_type_ids = token_type_ids
+        self.attention_mask = attention_mask
         self.label_id = label_id
         self.ori_tokens = ori_tokens
 
 
 class NerProcessor(object):
 
-    @staticmethod
-    def get_labels(config: Config):
-        """
-        读取训练数据获取标签
-        :param config:
-        :return:
-        """
-        label_pkl_path = os.path.join(config.output_path, "label_list.pkl")
-        if os.path.exists(label_pkl_path):
-            logging.info(f"loading labels info from {config.output_path}")
-            labels = load_pkl(label_pkl_path)
-        else:
-            logging.info(f"loading labels info from train file and dump in {config.output_path}")
-            tokens_list = load_file(config.train_file, sep=config.sep)
-            labels = set([tokens[1] for tokens in tokens_list if len(tokens) == 2])
-
-        if len(labels) == 0:
-            ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
-        else:
-            save_pkl(labels, label_pkl_path)
-
-        return labels
-
-    @staticmethod
-    def get_label2id_id2label(output_path, label_list):
-        """
-        获取label2id、id2label的映射
-        :param output_path:
-        :param label_list:
-        :return:
-        """
-        label2id_path = os.path.join(output_path, "label2id.pkl")
-        if os.path.exists(label2id_path):
-            label2id = load_pkl(label2id_path)
-        else:
-            label2id = {l: i for i, l in enumerate(label_list)}
-            save_pkl(label2id, label2id_path)
-
-        id2label = {value: key for key, value in label2id.items()}
-        return label2id, id2label
-
     def get_dataset(self, config: Config, tokenizer, mode="train"):
         """
         对指定数据集进行预处理，进一步封装数据，包括:
         examples：[InputExample(guid=index, text=text, label=label)]
         features：[InputFeatures( input_ids=input_ids,
-                                  input_mask=input_mask,
-                                  segment_ids=segment_ids,
+                                  token_type_ids=token_type_ids,
+                                  attention_mask=attention_mask,
                                   label_id=label_ids,
                                   ori_tokens=ori_tokens)]
         data： 处理完成的数据集, TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
@@ -111,10 +78,10 @@ class NerProcessor(object):
 
         # 获取全部数据的特征，封装成TensorDataset
         all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+        all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+        all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
-        data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
+        data = TensorDataset(all_input_ids, all_token_type_ids, all_attention_mask, all_label_ids)
 
         return examples, features, data
 
@@ -128,8 +95,8 @@ class NerProcessor(object):
             guid: 0
             tokens: [CLS] 王 辉 生 前 驾 驶 机 械 洒 药 消 毒 9 0 后 王 辉 ， 2 0 1 0 年 1 2 月 参 军 ， 2 0 1 5 年 1 2 月 退 伍 后 ， 先 是 应 聘 当 辅 警 ， 后 来 在 父 亲 成 立 的 扶 风 恒 盛 科 [SEP]
             input_ids: 101 4374 6778 4495 1184 7730 7724 3322 3462 3818 5790 3867 3681 130 121 1400 4374 6778 8024 123 121 122 121 2399 122 123 3299 1346 1092 8024 123 121 122 126 2399 122 123 3299 6842 824 1400 8024 1044 3221 2418 5470 2496 6774 6356 8024 1400 3341 1762 4266 779 2768 4989 4638 2820 7599 2608 4670 4906 102
-            input_mask: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-            segment_ids: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+            token_type_ids: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+            attention_mask: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
             label_ids: 2 5 3 2 2 2 2 2 2 2 2 2 2 4 11 11 5 3 2 4 11 11 11 11 11 11 11 2 2 2 4 11 11 11 11 11 11 11 2 2 2 2 2 2 2 2 2 0 14 2 2 2 2 2 2 2 2 2 12 7 7 7 7 2
 
         :param config:
@@ -171,31 +138,31 @@ class NerProcessor(object):
             ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
 
             # 给序列加上句首和句尾标志
-            new_tokens, segment_ids, label_ids = [], [], []
+            new_tokens, token_type_ids, label_ids = [], [], []
             new_tokens.append("[CLS]")
-            segment_ids.append(0)
+            token_type_ids.append(0)
             label_ids.append(label_map["O"])
             for i, token in enumerate(tokens):
                 new_tokens.append(token)
-                segment_ids.append(0)
+                token_type_ids.append(0)
                 label_ids.append(label_map[labels[i]])
             new_tokens.append("[SEP]")
-            segment_ids.append(0)
+            token_type_ids.append(0)
             label_ids.append(label_map["O"])
             input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
-            input_mask = [1] * len(input_ids)
+            attention_mask = [1] * len(input_ids)
             assert len(ori_tokens) == len(new_tokens), f"{len(ori_tokens)}, {len(new_tokens)}, {ori_tokens}"
 
             while len(input_ids) < max_seq_length:
                 input_ids.append(0)
-                input_mask.append(0)
-                segment_ids.append(0)
+                attention_mask.append(0)
+                token_type_ids.append(0)
                 label_ids.append(0)
                 new_tokens.append("**NULL**")
 
             assert len(input_ids) == max_seq_length
-            assert len(input_mask) == max_seq_length
-            assert len(segment_ids) == max_seq_length
+            assert len(attention_mask) == max_seq_length
+            assert len(token_type_ids) == max_seq_length
             assert len(label_ids) == max_seq_length
 
             if ex_index < 2:
@@ -203,13 +170,13 @@ class NerProcessor(object):
                 logging.info("guid: %s" % example.guid)
                 logging.info("tokens: %s" % " ".join([str(x) for x in new_tokens]))
                 logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-                logging.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-                logging.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+                logging.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+                logging.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
                 logging.info("label_ids: %s" % " ".join([str(x) for x in label_ids]))
 
             features.append(InputFeatures(input_ids=input_ids,
-                                          input_mask=input_mask,
-                                          segment_ids=segment_ids,
+                                          token_type_ids=token_type_ids,
+                                          attention_mask=attention_mask,
                                           label_id=label_ids,
                                           ori_tokens=ori_tokens))
         return features
@@ -229,6 +196,47 @@ class NerProcessor(object):
             label = line[0]
             examples.append(InputExample(guid=guid, text=text, label=label))
         return examples
+
+    @staticmethod
+    def get_labels(config: Config):
+        """
+        读取训练数据获取标签
+        :param config:
+        :return:
+        """
+        label_pkl_path = os.path.join(config.output_path, "label_list.pkl")
+        if os.path.exists(label_pkl_path):
+            logging.info(f"loading labels info from {config.output_path}")
+            labels = load_pkl(label_pkl_path)
+        else:
+            logging.info(f"loading labels info from train file and dump in {config.output_path}")
+            tokens_list = load_file(config.train_file, sep=config.sep)
+            labels = set([tokens[1] for tokens in tokens_list if len(tokens) == 2])
+
+        if len(labels) == 0:
+            ValueError("loading labels error, labels type not found in data file: {}".format(config.output_path))
+        else:
+            save_pkl(labels, label_pkl_path)
+
+        return labels
+
+    @staticmethod
+    def get_label2id_id2label(output_path, label_list):
+        """
+        获取label2id、id2label的映射
+        :param output_path:
+        :param label_list:
+        :return:
+        """
+        label2id_path = os.path.join(output_path, "label2id.pkl")
+        if os.path.exists(label2id_path):
+            label2id = load_pkl(label2id_path)
+        else:
+            label2id = {l: i for i, l in enumerate(label_list)}
+            save_pkl(label2id, label2id_path)
+
+        id2label = {value: key for key, value in label2id.items()}
+        return label2id, id2label
 
     @staticmethod
     def read_data(input_file, separator="\t"):

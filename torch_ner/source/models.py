@@ -105,37 +105,37 @@ class BERT_BiLSTM_CRF(BertPreTrainedModel):
         """
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
-    def forward(self, input_ids, tags, token_type_ids=None, input_mask=None):
+    def forward(self, input_ids, tags, token_type_ids=None, attention_mask=None):
         """
         BERT_BiLSTM_CRF模型的正向传播函数
 
         :param input_ids:      torch.Size([batch_size,seq_len]), 代表输入实例的tensor张量
         :param token_type_ids: torch.Size([batch_size,seq_len]), 一个实例可以含有两个句子,相当于标记
-        :param input_mask:     torch.Size([batch_size,seq_len]), 指定对哪些词进行self-Attention操作
+        :param attention_mask:     torch.Size([batch_size,seq_len]), 指定对哪些词进行self-Attention操作
         :param tags:
         :return:
         """
-        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
+        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         sequence_output = outputs[0]
         if self.need_birnn:
             sequence_output, _ = self.birnn(sequence_output)
         sequence_output = self.dropout(sequence_output)
         emissions = self.hidden2tag(sequence_output)
-        loss = -1 * self.crf(emissions, tags, mask=input_mask.byte())
+        loss = -1 * self.crf(emissions, tags, mask=attention_mask.byte())
         return loss
 
-    def predict(self, input_ids, token_type_ids=None, input_mask=None):
+    def predict(self, input_ids, token_type_ids=None, attention_mask=None):
         """
         模型预测
         :param input_ids:
         :param token_type_ids:
-        :param input_mask:
+        :param attention_mask:
         :return:
         """
-        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
+        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         sequence_output = outputs[0]
         if self.need_birnn:
             sequence_output, _ = self.birnn(sequence_output)
         sequence_output = self.dropout(sequence_output)
         emissions = self.hidden2tag(sequence_output)
-        return self.crf.decode(emissions, input_mask.byte())
+        return self.crf.decode(emissions, attention_mask.byte())
