@@ -3,6 +3,7 @@
 # @author: zchen
 # @time: 2020/11/29 20:32
 # @file: ner_processor.py
+
 import logging
 import os
 
@@ -62,16 +63,16 @@ class NerProcessor(object):
         :return:
         """
         if mode == "train":
-            filepath = config.train_file
+            file_path = config.train_file
         elif mode == "eval":
-            filepath = config.eval_file
+            file_path = config.eval_file
         elif mode == "test":
-            filepath = config.test_file
+            file_path = config.test_file
         else:
             raise ValueError("mode must be one of train, eval, or test")
 
         # 读取输入数据，进一步封装
-        examples = self.get_input_examples(filepath, separator=config.sep)
+        examples = self.get_input_examples(file_path, separator=config.sep)
 
         # 对输入数据进行特征转换
         features = self.convert_examples_to_features(config, examples, tokenizer)
@@ -110,6 +111,7 @@ class NerProcessor(object):
         for ex_index, example in tqdm(enumerate(examples), desc="convert examples"):
             example_text_list = example.text.split(" ")
             example_label_list = example.label.split(" ")
+
             assert len(example_text_list) == len(example_label_list)
 
             tokens, labels, ori_tokens = [], [], []
@@ -135,22 +137,15 @@ class NerProcessor(object):
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
                 ori_tokens = ori_tokens[0:(max_seq_length - 2)]
-            ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
 
             # 给序列加上句首和句尾标志
-            new_tokens, token_type_ids, label_ids = [], [], []
-            new_tokens.append("[CLS]")
-            token_type_ids.append(0)
-            label_ids.append(label_map["O"])
-            for i, token in enumerate(tokens):
-                new_tokens.append(token)
-                token_type_ids.append(0)
-                label_ids.append(label_map[labels[i]])
-            new_tokens.append("[SEP]")
-            token_type_ids.append(0)
-            label_ids.append(label_map["O"])
+            ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
+            new_tokens = ["[CLS]"] + tokens + ["[SEP]"]
+            label_ids = [label_map[labels[i]] for i, token in enumerate(new_tokens)]
             input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
+            token_type_ids = [0] * len(input_ids)
             attention_mask = [1] * len(input_ids)
+
             assert len(ori_tokens) == len(new_tokens), f"{len(ori_tokens)}, {len(new_tokens)}, {ori_tokens}"
 
             while len(input_ids) < max_seq_length:
@@ -158,7 +153,7 @@ class NerProcessor(object):
                 attention_mask.append(0)
                 token_type_ids.append(0)
                 label_ids.append(0)
-                new_tokens.append("**NULL**")
+                new_tokens.append("*NULL*")
 
             assert len(input_ids) == max_seq_length
             assert len(attention_mask) == max_seq_length

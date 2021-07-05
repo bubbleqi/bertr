@@ -233,7 +233,8 @@ class NerMain(object):
         model.eval()
         sampler = SequentialSampler(data)
         data_loader = DataLoader(data, sampler=sampler, batch_size=config.train_batch_size)
-        for b_i, (input_ids, token_type_ids, attention_mask, label_ids) in enumerate(tqdm(data_loader, desc="Evaluating")):
+        for b_i, (input_ids, token_type_ids, attention_mask, label_ids) in enumerate(
+                tqdm(data_loader, desc="Evaluating")):
             input_ids = input_ids.to(config.device)
             attention_mask = attention_mask.to(config.device)
             token_type_ids = token_type_ids.to(config.device)
@@ -263,21 +264,23 @@ class NerMain(object):
         overall, by_type = evaluate.metrics(counts)
         return overall, by_type
 
-    def predict(self, sentence):
+    @staticmethod
+    def predict(sentence, model_path):
         """
         模型预测
         :param sentence:
+        :param model_path:
         :return:
         """
         max_seq_length = 128
-        tokenizer = BertTokenizer.from_pretrained(self.config.output_path)
-        text_list = list(sentence)
+        tokenizer = BertTokenizer.from_pretrained(model_path)
         tokens = []
-        for word in text_list:
+        for word in list(sentence):
             tokens.extend(tokenizer.tokenize(word))
 
         if len(tokens) >= max_seq_length - 1:
-            tokens = tokens[0:(max_seq_length - 2)]  # -2 的原因是因为序列需要加一个句首和句尾标志
+            # -2 的原因是因为序列需要加一个句首和句尾标志
+            tokens = tokens[0:(max_seq_length - 2)]
 
         ntokens = ["[CLS]"] + tokens + ["[SEP]"]
 
@@ -295,23 +298,22 @@ class NerMain(object):
         assert len(attention_mask) == max_seq_length
 
         input_ids = torch.tensor(input_ids, dtype=torch.long)
-        segment_ids = torch.tensor(token_type_ids, dtype=torch.long)
-        input_mask = torch.tensor(attention_mask, dtype=torch.long)
+        token_type_ids = torch.tensor(token_type_ids, dtype=torch.long)
+        attention_mask = torch.tensor(attention_mask, dtype=torch.long)
 
+        # 单词在词典中的编码、区分两个句子的编码、指定对哪些词进行self-Attention操作
         input_ids = input_ids.to("cpu").unsqueeze(0)
-        segment_ids = segment_ids.to("cpu").unsqueeze(0)
-        input_mask = input_mask.to("cpu").unsqueeze(0)
+        token_type_ids = token_type_ids.to("cpu").unsqueeze(0)
+        attention_mask = attention_mask.to("cpu").unsqueeze(0)
 
-        model = torch.load(os.path.join(self.config.output_path, "ner_model.ckpt"), map_location="cpu")
-
+        model = torch.load(os.path.join(model_path, "ner_model.ckpt"), map_location="cpu")
         if isinstance(model, torch.nn.DataParallel):
             model = model.module
-
         model.eval()
         with torch.no_grad():
-            logits = model.predict(input_ids, segment_ids, input_mask)
+            logits = model.predict(input_ids, token_type_ids, attention_mask)
 
-        with open(os.path.join(self.config.output_path, "label2id.pkl"), "rb") as f:
+        with open(os.path.join(model_path, "label2id.pkl"), "rb") as f:
             label2id = pickle.load(f)
         id2label = {value: key for key, value in label2id.items()}
 

@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# @description:
+# @author: zchen
+# @time: 2020/11/30 18:23
+# @file: models.py.py
+
 import torch.nn as nn
 from pytorch_transformers import BertPreTrainedModel, BertModel
 from torchcrf import CRF
