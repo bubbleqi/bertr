@@ -1,8 +1,0 @@
-torch==1.1.0
-pytorch_crf==0.7.2
-numpy==1.19.4
-pytorch_transformers==1.2.0
-tqdm==4.51.0
-PyYAML==5.3.1
-tensorboardX==2.1
-torchcrf==1.1.0

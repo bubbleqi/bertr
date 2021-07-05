@@ -65,14 +65,13 @@ bert_bilstm_crf_ner_pytorch
 ```
 ##### 运行环境
 ```
-torch==1.1.0
-pytorch_crf==0.7.2
-numpy==1.19.4
+numpy==1.19.5
 pytorch_transformers==1.2.0
-tqdm==4.51.0
-PyYAML==5.3.1
-tensorboardX==2.1
-torchcrf==1.1.0
+pytorch-crf==0.7.2
+torch==1.7.0+cpu
+tqdm==4.61.1
+PyYAML==5.4.1
+tensorboardX==2.4
 ```
 
 ##### 使用方法
@@ -92,9 +91,11 @@ predict("xxx")
 class BERT_BiLSTM_CRF(BertPreTrainedModel):
     """
         BERT:
-            outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
+            outputs = self.bert(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
+            # torch.Size([batch_size,seq_len,hidden_size]) --- [6,128,768]
             sequence_output = outputs[0]
-            Args:
+
+            Inputs:
                 input_ids:      torch.Size([batch_size,seq_len]), 代表输入实例的tensor张量
                 token_type_ids: torch.Size([batch_size,seq_len]), 一个实例可以含有两个句子,相当于标记
                 attention_mask: torch.Size([batch_size,seq_len]), 指定对哪些词进行self-Attention操作
@@ -105,8 +106,8 @@ class BERT_BiLSTM_CRF(BertPreTrainedModel):
                 (attentions):    tuple, 12*torch.Size([batch_size, 12, seq_len, seq_len]), 注意力层，取决于config中的output_attentions
 
         BiLSTM:
-            self.birnn = nn.LSTM(config.hidden_size, rnn_dim, num_layers=1, bidirectional=True, batch_first=True)
-            sequence_output, _ = self.birnn(sequence_output)
+            # input_size:768, hidden_size=128
+            self.birnn = nn.LSTM(input_size=config.hidden_size, hidden_size=rnn_dim, num_layers=1, bidirectional=True, batch_first=True)
             Args:
                 input_size:    输入数据的特征维数
                 hidden_size:   LSTM中隐层的维度
@@ -115,6 +116,9 @@ class BERT_BiLSTM_CRF(BertPreTrainedModel):
                 batch_first:   通常我们输入的数据shape=(batch_size,seq_length,input_size),而batch_first默认是False,需要将batch_size与seq_length调换
                 dropout:       默认是0，代表不用dropout
                 bidirectional: 默认是false，代表不用双向LSTM
+
+            # [6,128,768] --> [6,128,256]
+            sequence_output, _ = self.birnn(sequence_output)
             Inputs:
                 input:     shape=(seq_length,batch_size,input_size)的张量
                 (h_0,c_0): h_0的shape=(num_layers*num_directions,batch,hidden_size)的张量，它包含了在当前这个batch_size中每个句子的初始隐藏状态，
@@ -158,27 +162,30 @@ class BERT_BiLSTM_CRF(BertPreTrainedModel):
         self.crf = CRF(config.num_labels, batch_first=True)
 
     def forward(self, input_ids, tags, token_type_ids=None, input_mask=None):
-        emissions = self._tag_outputs(input_ids, token_type_ids, input_mask)
-        loss = -1 * self.crf(emissions, tags, mask=input_mask.byte())
-        return loss
-
-    def _tag_outputs(self, input_ids, token_type_ids=None, input_mask=None):
-        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=input_mask)
+        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         sequence_output = outputs[0]
         if self.need_birnn:
             sequence_output, _ = self.birnn(sequence_output)
         sequence_output = self.dropout(sequence_output)
         emissions = self.hidden2tag(sequence_output)
-        return emissions
+        loss = -1 * self.crf(emissions, tags, mask=attention_mask.byte())
+        return loss
 
     def predict(self, input_ids, token_type_ids=None, input_mask=None):
-        emissions = self.tag_outputs(input_ids, token_type_ids, input_mask)
-        return self.crf.decode(emissions, input_mask.byte())
+        outputs = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        sequence_output = outputs[0]
+        if self.need_birnn:
+            sequence_output, _ = self.birnn(sequence_output)
+        sequence_output = self.dropout(sequence_output)
+        emissions = self.hidden2tag(sequence_output)
+        return self.crf.decode(emissions, attention_mask.byte())
 
 ```
 
 ##### 参考文章
-- [从Word Embedding到Bert模型——自然语言处理预训练技术发展史](https://mp.weixin.qq.com/s/FHDpx2cYYh9GZsa5nChi4g)
+- [从Word Embedding到Bert模型——自然语言处理预训练技术发展史](https://mp.weixin.qq.com/s?__biz=Mzg4NDQwNTI0OQ==&mid=2247523426&idx=2&sn=e608ddbb23a44031a11292f48670fa57)
+- [一文读懂BERT(原理篇)](https://blog.csdn.net/jiaowoshouzi/article/details/89073944)
+- [BERT — transformers 4.5.0](https://huggingface.co/transformers/model_doc/bert.html)
 - [Pytorch-Bert预训练模型的使用](https://www.cnblogs.com/douzujun/p/13572694.html)
 - [通俗易懂理解——BiLSTM](https://zhuanlan.zhihu.com/p/40119926)  
 - [详解BiLSTM及代码实现](https://zhuanlan.zhihu.com/p/47802053)  
