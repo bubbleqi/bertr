@@ -11,7 +11,7 @@ import torch
 from pytorch_transformers import AdamW, WarmupLinearSchedule
 from pytorch_transformers import (BertConfig, BertTokenizer)
 from tensorboardX import SummaryWriter
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, )
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler)
 from tqdm import tqdm, trange
 
 import torch_ner.source.conlleval as evaluate
@@ -32,7 +32,7 @@ class NerMain(object):
         模型训练
         :return:
         """
-        # 清理output_xxx目录，若output_xxx目录存在，将会被删除, 然后初始化输出目录
+        # 清理output/xxx目录，若output/xxx目录存在，将会被删除, 然后初始化输出目录
         self.processor.clean_output(self.config)
 
         # SummaryWriter构造函数
@@ -119,6 +119,7 @@ class NerMain(object):
             global_step, tr_loss, logging_loss, best_f1 = 0, 0.0, 0.0, 0.0
             for ep in trange(int(self.config.num_train_epochs), desc="Epoch"):
                 model.train()
+
                 for step, batch in enumerate(tqdm(train_data_loader, desc="DataLoader")):
                     batch = tuple(t.to(device) for t in batch)
                     input_ids, token_type_ids, attention_mask, label_ids = batch

@@ -30,11 +30,10 @@ class InputFeatures(object):
 
     def __init__(self, input_ids, token_type_ids, attention_mask, label_id, ori_tokens):
         """
-
-        :param input_ids:   单词在词典中的编码
+        :param input_ids:       单词在词典中的编码
         :param attention_mask:  指定 对哪些词 进行self-Attention操作
-        :param token_type_ids: 区分两个句子的编码（上句全为0，下句全为1）
-        :param label_id:    标签的id
+        :param token_type_ids:  区分两个句子的编码（上句全为0，下句全为1）
+        :param label_id:        标签的id
         :param ori_tokens:
         """
         self.input_ids = input_ids
@@ -55,7 +54,7 @@ class NerProcessor(object):
                                   attention_mask=attention_mask,
                                   label_id=label_ids,
                                   ori_tokens=ori_tokens)]
-        data： 处理完成的数据集, TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
+        data： 处理完成的数据集, TensorDataset(all_input_ids, all_token_type_ids, all_attention_mask, all_label_ids)
 
         :param config:
         :param tokenizer:
