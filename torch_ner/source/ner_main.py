@@ -38,18 +38,21 @@ class NerMain(object):
         # SummaryWriter构造函数
         writer = SummaryWriter(logdir=os.path.join(self.config.output_path, "eval"), comment="ner")
 
+        # 如果显存不足，我们可以通过gradient_accumulation_steps梯度累计来解决
+        # 假设原来的batch_size = 10, 数据总量为1000，那么一共需要100train_steps，同时一共进行100次梯度更新。
+        # 若是显存不够，我们需要减小batch＿size，我们设置gradient_accumulation_steps = 2，设置batch＿size = 5，
+        # 我们需要运行两次，才能在内存中放入10条数据，梯度更新的次数不变为100次，那么我们的train＿steps = 200
+        if self.config.gradient_accumulation_steps < 1:
+            raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
+                self.config.gradient_accumulation_steps))
+
         # 配置可用设备，没有指定使用哪一块gpu，则全部使用
         use_gpu = torch.cuda.is_available() and self.config.use_gpu
         device = torch.device('cuda' if use_gpu else self.config.device)
         self.config.device = device
         n_gpu = torch.cuda.device_count()
         logging.info(f"available device: {device}，count_gpu: {n_gpu}")
-
-        # 如果显存不足，我们可以通过gradient_accumulation_steps梯度累计来解决
-        if self.config.gradient_accumulation_steps < 1:
-            raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
-                self.config.gradient_accumulation_steps))
-
+        
         logging.info("====================== Start Data Pre-processing ======================")
         # 读取训练数据获取标签
         label_list = self.processor.get_labels(config=self.config)
@@ -89,15 +92,6 @@ class NerMain(object):
                 logging.info("loading eval data_set successful!")
             logging.info("====================== End Data Pre-processing ======================")
 
-            # 计算优化器_模型参数的总更新次数、训练轮次
-            if self.config.max_steps > 0:
-                t_total = self.config.max_steps
-                self.config.num_train_epochs = self.config.max_steps // (
-                        len(train_data_loader) // self.config.gradient_accumulation_steps) + 1
-            else:
-                t_total = len(
-                    train_data_loader) // self.config.gradient_accumulation_steps * self.config.num_train_epochs
-
             # 初始化模型优化器
             no_decay = ['bias', 'LayerNorm.weight']
             optimizer_grouped_parameters = [
@@ -107,12 +101,17 @@ class NerMain(object):
                  'weight_decay': 0.0}
             ]
             optimizer = AdamW(optimizer_grouped_parameters, lr=self.config.learning_rate, eps=self.config.adam_epsilon)
+
+            # 计算优化器模型参数的总更新次数
+            t_total = len(train_data_loader) // self.config.gradient_accumulation_steps * self.config.num_train_epochs
             scheduler = WarmupLinearSchedule(optimizer, warmup_steps=self.config.warmup_steps, t_total=t_total)
+
             logging.info("loading AdamW optimizer、Warmup LinearSchedule and calculate optimizer parameter successful!")
 
             logging.info("====================== Running training ======================")
-            logging.info(f"Num Examples:  {len(train_data)}, Num Epochs: {self.config.num_train_epochs}，"
-                         f"Num optimizer steps：{t_total}")
+            logging.info(
+                f"Num Examples:  {len(train_data)}, Num Batch Step: {len(train_data_loader)}, "
+                f"Num Epochs: {self.config.num_train_epochs}, Num scheduler steps：{t_total}")
 
             # 启用 BatchNormalization 和 Dropout
             model.train()

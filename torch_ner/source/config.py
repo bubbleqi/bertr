@@ -59,14 +59,13 @@ class Config(object):
         self.clean = True
         self.need_birnn = True
         self.do_lower_case = True
+        self.rnn_dim = 128
         self.max_seq_length = 128
         self.train_batch_size = 16
         self.eval_batch_size = 16
-        self.learning_rate = 3e-5
         self.num_train_epochs = 10
-        self.rnn_dim = 128
         self.gradient_accumulation_steps = 1
-        self.warmup_steps = 0
+        self.learning_rate = 3e-5
         self.adam_epsilon = 1e-8
-        self.max_steps = -1
+        self.warmup_steps = 0
         self.logging_steps = 500
