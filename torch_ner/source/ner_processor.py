@@ -137,10 +137,13 @@ class NerProcessor(object):
                 labels = labels[0:(max_seq_length - 2)]
                 ori_tokens = ori_tokens[0:(max_seq_length - 2)]
 
+            label_ids = [label_map[labels[i]] for i, token in enumerate(tokens)]
+            label_ids.insert(0, label_map["O"])
+            label_ids.append(label_map["O"])
+
             # 给序列加上句首和句尾标志
             ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
             new_tokens = ["[CLS]"] + tokens + ["[SEP]"]
-            label_ids = [label_map[labels[i]] for i, token in enumerate(new_tokens)]
             input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
             token_type_ids = [0] * len(input_ids)
             attention_mask = [1] * len(input_ids)
@@ -159,7 +162,7 @@ class NerProcessor(object):
             assert len(token_type_ids) == max_seq_length
             assert len(label_ids) == max_seq_length
 
-            if ex_index < 2:
+            if ex_index < 3:
                 logging.info("****** Example ******")
                 logging.info("guid: %s" % example.guid)
                 logging.info("tokens: %s" % " ".join([str(x) for x in new_tokens]))
