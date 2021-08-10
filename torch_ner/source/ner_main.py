@@ -77,6 +77,7 @@ class NerMain(object):
             if use_gpu and n_gpu > 1:
                 model = torch.nn.DataParallel(model)
 
+            logging.info("starting load train data and data_loader...")
             # 获取训练样本、样本特征、TensorDataset信息
             train_examples, train_features, train_data = self.processor.get_dataset(self.config, tokenizer,
                                                                                     mode="train")
@@ -87,6 +88,7 @@ class NerMain(object):
 
             eval_examples, eval_features, eval_data = [], [], None
             if self.config.do_eval:
+                logging.info("starting load eval data...")
                 eval_examples, eval_features, eval_data = self.processor.get_dataset(self.config, tokenizer,
                                                                                      mode="eval")
                 logging.info("loading eval data_set successful!")
@@ -117,10 +119,10 @@ class NerMain(object):
             model.train()
             global_step, tr_loss, logging_loss, best_f1 = 0, 0.0, 0.0, 0.0
             for ep in trange(int(self.config.num_train_epochs), desc="Epoch"):
-                logging.info(f"@@@@@ Epoch: {int(self.config.num_train_epochs)}, Curr Epoch: {ep} @@@@@")
+                logging.info(f"########[Epoch: {ep}/{int(self.config.num_train_epochs)}]########")
                 model.train()
                 for step, batch in enumerate(tqdm(train_data_loader, desc="DataLoader")):
-                    logging.info(f"--- Step: {len(train_data_loader)},Curr step: {step + 1} ---")
+                    logging.info(f"####[Step: {step}/{len(train_data_loader)}]####")
 
                     batch = tuple(t.to(device) for t in batch)
                     input_ids, token_type_ids, attention_mask, label_ids = batch

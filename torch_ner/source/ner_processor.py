@@ -107,7 +107,7 @@ class NerProcessor(object):
         label_map = {label: i for i, label in enumerate(config.label_list)}
         max_seq_length = config.max_seq_length
         features = []
-        for ex_index, example in tqdm(enumerate(examples), desc="convert examples"):
+        for ex_index, example in enumerate(tqdm(examples, desc="convert examples")):
             example_text_list = example.text.split(" ")
             example_label_list = example.label.split(" ")
 
@@ -128,6 +128,7 @@ class NerProcessor(object):
                     word_piece = True
 
             if word_piece:
+                logging.info("Error tokens!!! skip this lines, the content is: %s" % " ".join(example_text_list))
                 continue
 
             # 当句子长度大于自定义的最大句子长度时，删除多余的字符
