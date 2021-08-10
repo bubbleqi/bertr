@@ -117,10 +117,10 @@ class NerMain(object):
             model.train()
             global_step, tr_loss, logging_loss, best_f1 = 0, 0.0, 0.0, 0.0
             for ep in trange(int(self.config.num_train_epochs), desc="Epoch"):
+                logging.info(f"@@@@@ Epoch: {int(self.config.num_train_epochs)}, Curr Epoch: {ep} @@@@@")
                 model.train()
                 for step, batch in enumerate(tqdm(train_data_loader, desc="DataLoader")):
-                    logging.info(f"===>Epoch: {int(self.config.num_train_epochs)}, ===>>> Curr Epoch: {ep}, "
-                                 f"====>>Step: {len(train_data_loader)}, ===>>Curr step: {step + 1}")
+                    logging.info(f"--- Step: {len(train_data_loader)},Curr step: {step + 1} ---")
 
                     batch = tuple(t.to(device) for t in batch)
                     input_ids, token_type_ids, attention_mask, label_ids = batch
