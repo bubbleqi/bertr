@@ -114,6 +114,7 @@ class NerProcessor(object):
             assert len(example_text_list) == len(example_label_list)
 
             tokens, labels, ori_tokens = [], [], []
+            word_piece = False
             for i, word in enumerate(example_text_list):
                 # 防止wordPiece情况出现，不过貌似不会
                 token = tokenizer.tokenize(word)
@@ -121,14 +122,13 @@ class NerProcessor(object):
                 label_1 = example_label_list[i]
                 ori_tokens.append(word)
                 # 单个字符不会出现wordPiece
-                for m in range(len(token)):
-                    if m == 0:
-                        labels.append(label_1)
-                    else:
-                        if label_1 == "O":
-                            labels.append("O")
-                        else:
-                            labels.append("I")
+                if len(token) == 1:
+                    labels.append(label_1)
+                else:
+                    word_piece = True
+
+            if word_piece:
+                continue
 
             # 当句子长度大于自定义的最大句子长度时，删除多余的字符
             if len(tokens) >= max_seq_length - 1:

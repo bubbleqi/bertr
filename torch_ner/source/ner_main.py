@@ -52,7 +52,7 @@ class NerMain(object):
         self.config.device = device
         n_gpu = torch.cuda.device_count()
         logging.info(f"available device: {device}，count_gpu: {n_gpu}")
-        
+
         logging.info("====================== Start Data Pre-processing ======================")
         # 读取训练数据获取标签
         label_list = self.processor.get_labels(config=self.config)
@@ -118,8 +118,10 @@ class NerMain(object):
             global_step, tr_loss, logging_loss, best_f1 = 0, 0.0, 0.0, 0.0
             for ep in trange(int(self.config.num_train_epochs), desc="Epoch"):
                 model.train()
-
                 for step, batch in enumerate(tqdm(train_data_loader, desc="DataLoader")):
+                    logging.info(f"===>Epoch: {int(self.config.num_train_epochs)}, ===>>> Curr Epoch: {ep}, "
+                                 f"====>>Step: {len(train_data_loader)}, ===>>Curr step: {step + 1}")
+
                     batch = tuple(t.to(device) for t in batch)
                     input_ids, token_type_ids, attention_mask, label_ids = batch
                     outputs = model(input_ids, label_ids, token_type_ids, attention_mask)
