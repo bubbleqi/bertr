@@ -5,11 +5,9 @@
 # @file: ner_main.py
 
 import os
-import pickle
 
 import torch
-from pytorch_transformers import AdamW, WarmupLinearSchedule
-from pytorch_transformers import (BertConfig, BertTokenizer)
+from transformers import AdamW, get_linear_schedule_with_warmup, BertConfig, BertTokenizer
 from tensorboardX import SummaryWriter
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler)
 from tqdm import tqdm, trange
@@ -94,7 +92,7 @@ class NerMain(object):
                 logging.info("loading eval data_set successful!")
             logging.info("====================== End Data Pre-processing ======================")
 
-            # 初始化模型优化器
+            # 初始化模型参数优化器
             no_decay = ['bias', 'LayerNorm.weight']
             optimizer_grouped_parameters = [
                 {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
@@ -104,10 +102,11 @@ class NerMain(object):
             ]
             optimizer = AdamW(optimizer_grouped_parameters, lr=self.config.learning_rate, eps=self.config.adam_epsilon)
 
-            # 计算优化器模型参数的总更新次数
+            # 初始化学习率优化器
             t_total = len(train_data_loader) // self.config.gradient_accumulation_steps * self.config.num_train_epochs
-            scheduler = WarmupLinearSchedule(optimizer, warmup_steps=self.config.warmup_steps, t_total=t_total)
-
+            scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=self.config.warmup_steps,
+                                                        num_training_steps=t_total)
+            # scheduler = WarmupLinearSchedule(optimizer, warmup_steps=self.config.warmup_steps, t_total=t_total)
             logging.info("loading AdamW optimizer、Warmup LinearSchedule and calculate optimizer parameter successful!")
 
             logging.info("====================== Running training ======================")
@@ -267,6 +266,7 @@ class NerMain(object):
         # namedtuple('Metrics', 'tp fp fn prec rec fscore')
         overall, by_type = evaluate.metrics(counts)
         return overall, by_type
+
 
 if __name__ == '__main__':
     NerMain().train()

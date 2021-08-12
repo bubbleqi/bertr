@@ -65,11 +65,11 @@ bert_bilstm_crf_ner_pytorch
 ```
 ##### 运行环境
 ```
-numpy==1.19.5
-pytorch_transformers==1.2.0
-pytorch-crf==0.7.2
-torch==1.7.0+cpu
-tqdm==4.61.1
+torch==1.8.0
+pytorch_crf==0.7.2
+numpy==1.17.0
+transformers==4.9.0
+tqdm==4.62.0
 PyYAML==5.4.1
 tensorboardX==2.4
 ```

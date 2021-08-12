@@ -119,11 +119,11 @@ class NerProcessor(object):
                 # 防止wordPiece情况出现，不过貌似不会
                 token = tokenizer.tokenize(word)
                 tokens.extend(token)
-                label_1 = example_label_list[i]
+                label = example_label_list[i]
                 ori_tokens.append(word)
                 # 单个字符不会出现wordPiece
                 if len(token) == 1:
-                    labels.append(label_1)
+                    labels.append(label)
                 else:
                     word_piece = True
 
@@ -139,8 +139,6 @@ class NerProcessor(object):
                 ori_tokens = ori_tokens[0:(max_seq_length - 2)]
 
             label_ids = [label_map[labels[i]] for i, token in enumerate(tokens)]
-            label_ids.insert(0, label_map["O"])
-            label_ids.append(label_map["O"])
 
             # 给序列加上句首和句尾标志
             ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
@@ -149,7 +147,7 @@ class NerProcessor(object):
             token_type_ids = [0] * len(input_ids)
             attention_mask = [1] * len(input_ids)
 
-            assert len(ori_tokens) == len(new_tokens), f"{len(ori_tokens)}, {len(new_tokens)}, {ori_tokens}"
+            assert len(ori_tokens) == len(new_tokens)
 
             while len(input_ids) < max_seq_length:
                 input_ids.append(0)

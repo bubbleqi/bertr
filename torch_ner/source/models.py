@@ -5,7 +5,7 @@
 # @file: models.py.py
 
 import torch.nn as nn
-from pytorch_transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertModel
 from torchcrf import CRF
 
 

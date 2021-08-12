@@ -2,7 +2,7 @@ import os
 import pickle
 
 import torch
-from pytorch_transformers import BertTokenizer
+from transformers import BertTokenizer
 
 entity_map_dic = {"ORG": "cpny_name", "FNAME": "firstname", "LNAME": "lastname", "CW": "chenwei",
                   "DATE": "date", "LOC": "addr_value", "LABEL": "label"}
@@ -15,30 +15,13 @@ def predict(sentence, model_path):
     :param model_path:
     :return:
     """
-    max_seq_length = 128
-    tokenizer = BertTokenizer.from_pretrained(model_path)
-    tokens = []
-    word_piece = False
-    for word in list(sentence):
-        token = tokenizer.tokenize(word)
-        tokens.extend(tokenizer.tokenize(word))
-
-        # 单个字符不会出现wordPiece
-        if len(token) != 1:
-            word_piece = True
-
-    if word_piece:
+    if len(sentence) > 128:
         return list(sentence), []
 
-    if len(tokens) >= max_seq_length - 1:
-        # -2 的原因是因为序列需要加一个句首和句尾标志
-        tokens = tokens[0:(max_seq_length - 2)]
-
-    ntokens = ["[CLS]"] + tokens + ["[SEP]"]
-
-    input_ids = tokenizer.convert_tokens_to_ids(ntokens)
-    token_type_ids = [0] * len(input_ids)
-    attention_mask = [1] * len(input_ids)
+    max_seq_length = 128
+    tokenizer = BertTokenizer.from_pretrained(model_path)
+    result = tokenizer.encode_plus(sentence)
+    input_ids, token_type_ids, attention_mask = result["input_ids"], result["token_type_ids"], result["attention_mask"]
 
     while len(input_ids) < max_seq_length:
         input_ids.append(0)
@@ -63,15 +46,15 @@ def predict(sentence, model_path):
         model = model.module
     model.eval()
     with torch.no_grad():
-        logits = model.predict(input_ids, token_type_ids, attention_mask)
+        pred_val = model.predict(input_ids, token_type_ids, attention_mask)
 
     with open(os.path.join(model_path, "label2id.pkl"), "rb") as f:
         label2id = pickle.load(f)
     id2label = {value: key for key, value in label2id.items()}
 
     pred_labels = []
-    for i, label in enumerate(logits[0]):
-        if i != 0 and i != len(logits[0]) - 1:
+    for i, label in enumerate(pred_val[0]):
+        if i != 0 and i != len(pred_val[0]) - 1:
             pred_labels.append(id2label[label])
 
     return list(sentence), pred_labels
@@ -135,7 +118,7 @@ def deal_model_result(query):
     :param query: 查询问句
     :return:
     """
-    path = "E:\\workspace\\pycharm_spaces\\bert_bilstm_crf_ner_pytorch\\torch_ner\\output\\20210811104042"
+    path = "../../output/20210811104042"
     sentence_list, pred_labels = predict(query, path)
 
     if len(pred_labels) == 0:
@@ -222,11 +205,3 @@ def _merge_entity(e1, e2):
     else:
         r_entity['detail'] = [e1, e2]
     return r_entity
-
-
-if __name__ == '__main__':
-    query = "出生在江苏南京的张三的爸爸是谁？"
-    entities = deal_model_result(query)
-    print(entities)
-    combine_entity = _combine_person_entity(entities)
-    print(combine_entity)
