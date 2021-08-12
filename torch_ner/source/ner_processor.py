@@ -143,6 +143,7 @@ class NerProcessor(object):
             # 给序列加上句首和句尾标志
             ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
             new_tokens = ["[CLS]"] + tokens + ["[SEP]"]
+            label_ids = [label_map["O"]] + label_ids + [label_map["O"]]
             input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
             token_type_ids = [0] * len(input_ids)
             attention_mask = [1] * len(input_ids)
