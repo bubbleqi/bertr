@@ -43,9 +43,9 @@ bert_bilstm_crf_ner_pytorch
 房 O
 住 O
 的 O
-张 B-FNAME
-之 B-LNAME
-三 I-LNAME
+张 B-NAME
+之 I-NAME
+三 I-NAME
 是 O
 什 O
 么 O
@@ -59,9 +59,9 @@ bert_bilstm_crf_ner_pytorch
 城 I-LOC
 市 I-LOC
 的 O
-李 B-FNAME
-丘 I-FNAME
-闪 B-LNAME
+李 B-NAME
+丘 I-NAME
+闪 I-NAME
 ```
 ##### 运行环境
 ```
@@ -84,7 +84,7 @@ train()
 ```
 predict("xxx")
 ```
-具体可见`ner_main.py`
+具体可见`ner_main.py`、`ner_predict.py`
 
 ##### 关于BERT-BiLSTM-CRF
 ```
