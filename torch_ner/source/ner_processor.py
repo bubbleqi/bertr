@@ -28,19 +28,17 @@ class InputExample(object):
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, token_type_ids, attention_mask, label_id, ori_tokens):
+    def __init__(self, input_ids, token_type_ids, attention_mask, label_id):
         """
         :param input_ids:       单词在词典中的编码
         :param attention_mask:  指定 对哪些词 进行self-Attention操作
         :param token_type_ids:  区分两个句子的编码（上句全为0，下句全为1）
         :param label_id:        标签的id
-        :param ori_tokens:
         """
         self.input_ids = input_ids
         self.token_type_ids = token_type_ids
         self.attention_mask = attention_mask
         self.label_id = label_id
-        self.ori_tokens = ori_tokens
 
 
 class NerProcessor(object):
@@ -52,8 +50,7 @@ class NerProcessor(object):
         features：[InputFeatures( input_ids=input_ids,
                                   token_type_ids=token_type_ids,
                                   attention_mask=attention_mask,
-                                  label_id=label_ids,
-                                  ori_tokens=ori_tokens)]
+                                  label_id=label_ids)]
         data： 处理完成的数据集, TensorDataset(all_input_ids, all_token_type_ids, all_attention_mask, all_label_ids)
 
         :param config:
@@ -113,14 +110,13 @@ class NerProcessor(object):
 
             assert len(example_text_list) == len(example_label_list)
 
-            tokens, labels, ori_tokens = [], [], []
+            tokens, labels = [], []
             word_piece = False
             for i, word in enumerate(example_text_list):
                 # 防止wordPiece情况出现，不过貌似不会
                 token = tokenizer.tokenize(word)
                 tokens.extend(token)
                 label = example_label_list[i]
-                ori_tokens.append(word)
                 # 单个字符不会出现wordPiece
                 if len(token) == 1:
                     labels.append(label)
@@ -136,26 +132,15 @@ class NerProcessor(object):
                 # -2的原因是因为序列需要加一个句首和句尾标志
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
-                ori_tokens = ori_tokens[0:(max_seq_length - 2)]
 
-            label_ids = [label_map[labels[i]] for i, token in enumerate(tokens)]
+            # 给序列加上句首和句尾标志, 统一将序列padding到max_length长度
+            sen_code = tokenizer.encode_plus(tokens, add_special_tokens=True, max_length=max_seq_length,
+                                             padding="max_length")
+            input_ids, token_type_ids, attention_mask = sen_code["input_ids"], sen_code["token_type_ids"], sen_code[
+                "attention_mask"]
 
-            # 给序列加上句首和句尾标志
-            ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
-            new_tokens = ["[CLS]"] + tokens + ["[SEP]"]
-            label_ids = [label_map["O"]] + label_ids + [label_map["O"]]
-            input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
-            token_type_ids = [0] * len(input_ids)
-            attention_mask = [1] * len(input_ids)
-
-            assert len(ori_tokens) == len(new_tokens)
-
-            while len(input_ids) < max_seq_length:
-                input_ids.append(0)
-                attention_mask.append(0)
-                token_type_ids.append(0)
-                label_ids.append(0)
-                new_tokens.append("*NULL*")
+            label_ids = [label_map["O"]] + [label_map[labels[i]] for i, token in enumerate(tokens)] + [label_map["O"]]
+            label_ids.extend([label_map["O"]] * (max_seq_length - len(label_ids)))
 
             assert len(input_ids) == max_seq_length
             assert len(attention_mask) == max_seq_length
@@ -165,7 +150,7 @@ class NerProcessor(object):
             if ex_index < 3:
                 logging.info("****** Example ******")
                 logging.info("guid: %s" % example.guid)
-                logging.info("tokens: %s" % " ".join([str(x) for x in new_tokens]))
+                logging.info("tokens: %s" % tokenizer.convert_ids_to_tokens(sen_code["input_ids"]))
                 logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
                 logging.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
                 logging.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
@@ -174,8 +159,7 @@ class NerProcessor(object):
             features.append(InputFeatures(input_ids=input_ids,
                                           token_type_ids=token_type_ids,
                                           attention_mask=attention_mask,
-                                          label_id=label_ids,
-                                          ori_tokens=ori_tokens))
+                                          label_id=label_ids))
         return features
 
     def get_input_examples(self, input_file, separator=" "):
