@@ -28,7 +28,7 @@ class InputExample(object):
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, token_type_ids, attention_mask, label_id):
+    def __init__(self, input_ids, token_type_ids, attention_mask, label_id, ori_tokens):
         """
         :param input_ids:       单词在词典中的编码
         :param attention_mask:  指定 对哪些词 进行self-Attention操作
@@ -39,6 +39,7 @@ class InputFeatures(object):
         self.token_type_ids = token_type_ids
         self.attention_mask = attention_mask
         self.label_id = label_id
+        self.ori_tokens = ori_tokens
 
 
 class NerProcessor(object):
@@ -50,7 +51,8 @@ class NerProcessor(object):
         features：[InputFeatures( input_ids=input_ids,
                                   token_type_ids=token_type_ids,
                                   attention_mask=attention_mask,
-                                  label_id=label_ids)]
+                                  label_id=label_ids,
+                                  ori_tokens=ori_tokens)]
         data： 处理完成的数据集, TensorDataset(all_input_ids, all_token_type_ids, all_attention_mask, all_label_ids)
 
         :param config:
@@ -110,13 +112,14 @@ class NerProcessor(object):
 
             assert len(example_text_list) == len(example_label_list)
 
-            tokens, labels = [], []
+            tokens, labels, ori_tokens = [], [], []
             word_piece = False
             for i, word in enumerate(example_text_list):
                 # 防止wordPiece情况出现，不过貌似不会
                 token = tokenizer.tokenize(word)
                 tokens.extend(token)
                 label = example_label_list[i]
+                ori_tokens.append(word)
                 # 单个字符不会出现wordPiece
                 if len(token) == 1:
                     labels.append(label)
@@ -132,10 +135,13 @@ class NerProcessor(object):
                 # -2的原因是因为序列需要加一个句首和句尾标志
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
+                ori_tokens = ori_tokens[0:(max_seq_length - 2)]
 
             # 给序列加上句首和句尾标志, 统一将序列padding到max_length长度
             sen_code = tokenizer.encode_plus(tokens, add_special_tokens=True, max_length=max_seq_length,
                                              padding="max_length")
+            ori_tokens = ["[CLS]"] + ori_tokens + ["[SEP]"]
+
             input_ids, token_type_ids, attention_mask = sen_code["input_ids"], sen_code["token_type_ids"], sen_code[
                 "attention_mask"]
 
@@ -159,7 +165,8 @@ class NerProcessor(object):
             features.append(InputFeatures(input_ids=input_ids,
                                           token_type_ids=token_type_ids,
                                           attention_mask=attention_mask,
-                                          label_id=label_ids))
+                                          label_id=label_ids,
+                                          ori_tokens=ori_tokens))
         return features
 
     def get_input_examples(self, input_file, separator=" "):
